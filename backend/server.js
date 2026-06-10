@@ -48,12 +48,7 @@ app.put('/api/config/reminders', (req, res) => {
   res.json(db.prepare('SELECT * FROM reminder_config WHERE id = 1').get());
 });
 
-// Serve built React frontend in production
-if (process.env.NODE_ENV === 'production') {
-  const distPath = path.join(__dirname, '../frontend/dist');
-  app.use(express.static(distPath));
-  app.get('*', (req, res) => res.sendFile(path.join(distPath, 'index.html')));
-}
+// Frontend is served separately on Vercel — no static serving needed here
 
 app.use((err, req, res, next) => {
   console.error('[Error]', err.message);
