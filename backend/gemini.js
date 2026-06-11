@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 
 const PROMPT = `You are reading a sales order document image, likely from an Indian business (Tally ERP format).
 
@@ -38,18 +38,30 @@ function addDays(dateStr, days) {
 }
 
 async function extractOrderFromImage(imageBuffer, mimeType) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) throw new Error('GEMINI_API_KEY not set in .env');
+  const key = process.env.GROQ_API_KEY;
+  if (!key) throw new Error('GROQ_API_KEY not set in environment');
 
-  const genAI = new GoogleGenerativeAI(key);
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const groq = new Groq({ apiKey: key });
 
-  const result = await model.generateContent([
-    PROMPT,
-    { inlineData: { data: imageBuffer.toString('base64'), mimeType: mimeType || 'image/jpeg' } },
-  ]);
+  const base64Image = imageBuffer.toString('base64');
+  const imageUrl = `data:${mimeType || 'image/jpeg'};base64,${base64Image}`;
 
-  const text = result.response.text().trim();
+  const response = await groq.chat.completions.create({
+    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: PROMPT },
+          { type: 'image_url', image_url: { url: imageUrl } },
+        ],
+      },
+    ],
+    max_tokens: 512,
+    temperature: 0,
+  });
+
+  const text = response.choices[0]?.message?.content?.trim() || '';
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
   const match = cleaned.match(/\{[\s\S]*\}/);
   if (!match) throw new Error('Could not parse order data from image');
