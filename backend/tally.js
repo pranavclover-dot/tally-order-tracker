@@ -212,10 +212,8 @@ async function syncOrdersFromTally() {
     console.log(`[Tally] Synced ${orders.length} orders from Tally`);
     return orders.length;
   } catch (err) {
-    console.warn('[Tally] Unreachable, falling back to mock data:', err.message);
-    const orders = getMockOrders();
-    upsertOrders(orders);
-    return orders.length;
+    console.warn('[Tally] Unreachable — skipping sync:', err.message);
+    return 0;
   }
 }
 
