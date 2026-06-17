@@ -36,16 +36,19 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/salesmen', salesmenRouter);
 
-app.get('/api/config/reminders', (req, res) => {
-  const config = db.prepare('SELECT * FROM reminder_config WHERE id = 1').get();
-  res.json(config || { days_before: '7,3,1', email_enabled: 1, inapp_enabled: 1 });
+app.get('/api/config/reminders', async (req, res) => {
+  const result = await db.execute('SELECT * FROM reminder_config WHERE id = 1');
+  res.json(result.rows[0] || { days_before: '7,3,1', email_enabled: 1, inapp_enabled: 1 });
 });
 
-app.put('/api/config/reminders', (req, res) => {
+app.put('/api/config/reminders', async (req, res) => {
   const { days_before, email_enabled, inapp_enabled } = req.body;
-  db.prepare(`UPDATE reminder_config SET days_before=?, email_enabled=?, inapp_enabled=? WHERE id=1`)
-    .run(days_before, email_enabled ? 1 : 0, inapp_enabled ? 1 : 0);
-  res.json(db.prepare('SELECT * FROM reminder_config WHERE id = 1').get());
+  await db.execute({
+    sql: 'UPDATE reminder_config SET days_before=?, email_enabled=?, inapp_enabled=? WHERE id=1',
+    args: [days_before, email_enabled ? 1 : 0, inapp_enabled ? 1 : 0],
+  });
+  const result = await db.execute('SELECT * FROM reminder_config WHERE id = 1');
+  res.json(result.rows[0]);
 });
 
 // Frontend is served separately on Vercel — no static serving needed here
@@ -56,7 +59,7 @@ app.use((err, req, res, next) => {
 });
 
 async function startup() {
-  initDB();
+  await initDB();
   console.log('[DB] Database initialized');
   await syncOrdersFromTally();
   console.log('[Tally] Initial sync complete');

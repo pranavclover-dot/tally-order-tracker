@@ -161,32 +161,26 @@ async function parseTallyXML(xmlData) {
   return orders;
 }
 
-function upsertOrders(orders) {
-  const upsert = db.prepare(`
-    INSERT OR REPLACE INTO orders
-      (tally_id, order_number, customer_name, salesman_name, salesman_email,
-       order_date, delivery_deadline, amount, status, last_synced)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
+async function upsertOrders(orders) {
   const now = new Date().toISOString();
-  const run = db.transaction((list) => {
-    for (const o of list) {
-      upsert.run(
-        o.tally_id, o.order_number, o.customer_name, o.salesman_name,
-        o.salesman_email, o.order_date, o.delivery_deadline,
-        o.amount, o.status, now
-      );
-    }
-  });
-  run(orders);
+  for (const o of orders) {
+    await db.execute({
+      sql: `INSERT OR REPLACE INTO orders
+        (tally_id, order_number, customer_name, salesman_name, salesman_email,
+         order_date, delivery_deadline, amount, status, last_synced)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [o.tally_id, o.order_number, o.customer_name, o.salesman_name,
+             o.salesman_email, o.order_date, o.delivery_deadline,
+             o.amount, o.status, now],
+    });
+  }
 }
 
 async function syncOrdersFromTally() {
   if (process.env.MOCK_MODE === 'true') {
     console.log('[Tally] MOCK_MODE=true — using mock data');
     const orders = getMockOrders();
-    upsertOrders(orders);
+    await upsertOrders(orders);
     return orders.length;
   }
 
@@ -208,7 +202,7 @@ async function syncOrdersFromTally() {
     });
     const orders = await parseTallyXML(response.data);
     if (orders.length === 0) throw new Error('No orders parsed from Tally response');
-    upsertOrders(orders);
+    await upsertOrders(orders);
     console.log(`[Tally] Synced ${orders.length} orders from Tally`);
     return orders.length;
   } catch (err) {
