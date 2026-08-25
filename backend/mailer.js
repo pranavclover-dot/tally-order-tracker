@@ -6,16 +6,18 @@ let transporter = null;
 function getTransporter() {
   if (transporter) return transporter;
 
-  const user = process.env.GMAIL_USER;
-  const pass = process.env.GMAIL_PASS;
+  const user = process.env.BREVO_USER;
+  const pass = process.env.BREVO_PASS;
 
-  if (!user || !pass || user === 'your@gmail.com') {
-    console.warn('[Mailer] Gmail credentials not configured — email notifications disabled');
+  if (!user || !pass) {
+    console.warn('[Mailer] Brevo credentials not configured — email notifications disabled');
     return null;
   }
 
   transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp-relay.brevo.com',
+    port: 587,
+    secure: false,
     auth: { user, pass },
   });
 
@@ -153,7 +155,7 @@ async function sendReminderEmail(to, salesmanName, order, daysLeft) {
   const subject = `[Order Tracker] ${label} — ${order.order_number} | ${order.customer_name}`;
 
   await t.sendMail({
-    from: `"Order Tracker" <${process.env.GMAIL_USER}>`,
+    from: `"Order Tracker" <${process.env.BREVO_USER}>`,
     to,
     subject,
     html: buildEmailHTML(salesmanName, order, daysLeft),
