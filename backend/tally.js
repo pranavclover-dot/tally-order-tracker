@@ -184,12 +184,16 @@ async function syncOrdersFromTally() {
     return orders.length;
   }
 
+  const company = process.env.TALLY_COMPANY || 'Clover Enterprises';
   const xmlRequest = `<ENVELOPE>
   <HEADER><TALLYREQUEST>Export Data</TALLYREQUEST></HEADER>
   <BODY>
     <EXPORTDATA>
       <REQUESTDESC>
         <REPORTNAME>Sales Order Book</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>${company}</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
       </REQUESTDESC>
     </EXPORTDATA>
   </BODY>
