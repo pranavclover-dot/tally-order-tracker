@@ -91,10 +91,11 @@ router.post('/sync', async (req, res) => {
   }
 });
 
-router.post('/extract', upload.single('image'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No image uploaded' });
+router.post('/extract', upload.array('images', 5), async (req, res) => {
+  const files = req.files?.length ? req.files : (req.file ? [req.file] : []);
+  if (!files.length) return res.status(400).json({ error: 'No image uploaded' });
   try {
-    const data = await extractOrderFromImage(req.file.buffer, req.file.mimetype);
+    const data = await extractOrderFromImage(files.map(f => ({ buffer: f.buffer, mimeType: f.mimetype })));
     res.json(data);
   } catch (err) {
     console.error('[Extract] error:', err.message);

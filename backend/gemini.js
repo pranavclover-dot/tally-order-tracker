@@ -37,14 +37,18 @@ function addDays(dateStr, days) {
   return d.toISOString().split('T')[0];
 }
 
-async function extractOrderFromImage(imageBuffer, mimeType) {
+async function extractOrderFromImage(files) {
   const key = process.env.GROQ_API_KEY;
   if (!key) throw new Error('GROQ_API_KEY not set in environment');
 
   const groq = new Groq({ apiKey: key });
 
-  const base64Image = imageBuffer.toString('base64');
-  const imageUrl = `data:${mimeType || 'image/jpeg'};base64,${base64Image}`;
+  // files is an array of {buffer, mimeType} — qwen supports up to 5 images
+  const fileList = Array.isArray(files) ? files : [files];
+  const imageContent = fileList.slice(0, 5).map(({ buffer, mimeType }) => ({
+    type: 'image_url',
+    image_url: { url: `data:${mimeType || 'image/jpeg'};base64,${buffer.toString('base64')}` },
+  }));
 
   const response = await groq.chat.completions.create({
     model: 'qwen/qwen3.6-27b',
@@ -53,7 +57,7 @@ async function extractOrderFromImage(imageBuffer, mimeType) {
         role: 'user',
         content: [
           { type: 'text', text: PROMPT },
-          { type: 'image_url', image_url: { url: imageUrl } },
+          ...imageContent,
         ],
       },
     ],

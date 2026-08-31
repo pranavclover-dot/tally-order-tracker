@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { X, Save, Camera, Edit3, Loader2, AlertCircle, CheckCircle2, Upload } from 'lucide-react';
+import { X, Save, Camera, Edit3, Loader2, AlertCircle, CheckCircle2, Upload, Plus, Trash2 } from 'lucide-react';
 import api from '../api/client';
 
 function defaultDeadline() {
@@ -40,8 +40,7 @@ export default function OrderForm({ order, onClose, onSaved }) {
     status: order.status || 'pending',
   } : { ...EMPTY });
 
-  const [image, setImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
+  const [images, setImages] = useState([]); // [{file, preview}]
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState('');
   const [extracted, setExtracted] = useState(false);
@@ -49,34 +48,34 @@ export default function OrderForm({ order, onClose, onSaved }) {
   const [error, setError] = useState('');
   const fileRef = useRef();
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setImage(file);
-    setImagePreview(URL.createObjectURL(file));
+  const addImages = (newFiles) => {
+    const valid = Array.from(newFiles).filter(f => f.type.startsWith('image/'));
+    if (!valid.length) return;
+    setImages(prev => {
+      const combined = [...prev, ...valid.map(f => ({ file: f, preview: URL.createObjectURL(f) }))];
+      return combined.slice(0, 5); // max 5
+    });
     setExtracted(false);
     setExtractError('');
   };
 
+  const removeImage = (idx) => {
+    setImages(prev => prev.filter((_, i) => i !== idx));
+  };
+
   const handleDrop = (e) => {
     e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      setImage(file);
-      setImagePreview(URL.createObjectURL(file));
-      setExtracted(false);
-      setExtractError('');
-    }
+    addImages(e.dataTransfer.files);
   };
 
   const handleExtract = async () => {
-    if (!image) return;
+    if (!images.length) return;
     setExtracting(true);
     setExtractError('');
     setExtracted(false);
     try {
       const fd = new FormData();
-      fd.append('image', image);
+      images.forEach(({ file }) => fd.append('images', file));
       const res = await api.post('/orders/extract', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -151,31 +150,62 @@ export default function OrderForm({ order, onClose, onSaved }) {
           {/* ── SCAN TAB ──────────────────────────────────── */}
           {tab === 'scan' && !order && (
             <div className="p-5 space-y-4">
-              {/* Drop zone */}
-              <div
-                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${
-                  imagePreview ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/50'
-                }`}
-                onClick={() => fileRef.current?.click()}
-                onDrop={handleDrop}
-                onDragOver={(e) => e.preventDefault()}
-              >
-                {imagePreview ? (
-                  <img src={imagePreview} alt="Order preview" className="max-h-52 mx-auto rounded-lg object-contain" />
-                ) : (
-                  <>
-                    <Upload className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm font-medium text-gray-600">Click or drag & drop a photo</p>
-                    <p className="text-xs text-gray-400 mt-1">JPG, PNG, HEIC up to 10MB</p>
-                  </>
-                )}
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-              </div>
+              {/* Thumbnails grid */}
+              {images.length > 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                  {images.map((img, idx) => (
+                    <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-200 aspect-square bg-gray-50">
+                      <img src={img.preview} alt={`Page ${idx + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => removeImage(idx)}
+                        className="absolute top-1 right-1 bg-black/60 hover:bg-red-600 text-white rounded-full p-0.5 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                      <span className="absolute bottom-1 left-1 bg-black/50 text-white text-[10px] px-1 rounded">
+                        {idx + 1}
+                      </span>
+                    </div>
+                  ))}
+                  {images.length < 5 && (
+                    <button
+                      onClick={() => fileRef.current?.click()}
+                      className="aspect-square rounded-lg border-2 border-dashed border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 flex flex-col items-center justify-center gap-1 transition-colors"
+                    >
+                      <Plus className="w-5 h-5 text-gray-400" />
+                      <span className="text-[10px] text-gray-400">Add page</span>
+                    </button>
+                  )}
+                </div>
+              )}
 
-              {imagePreview && (
-                <button onClick={() => fileRef.current?.click()} className="text-xs text-blue-600 hover:underline w-full text-center">
-                  Choose different photo
-                </button>
+              {/* Drop zone — shown when no images yet */}
+              {images.length === 0 && (
+                <div
+                  className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors border-gray-200 hover:border-blue-300 hover:bg-blue-50/50"
+                  onClick={() => fileRef.current?.click()}
+                  onDrop={handleDrop}
+                  onDragOver={(e) => e.preventDefault()}
+                >
+                  <Upload className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-sm font-medium text-gray-600">Click or drag & drop photos</p>
+                  <p className="text-xs text-gray-400 mt-1">Upload up to 5 pages — JPG, PNG, HEIC</p>
+                </div>
+              )}
+
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={(e) => addImages(e.target.files)}
+              />
+
+              {images.length > 0 && (
+                <p className="text-xs text-center text-gray-400">
+                  {images.length}/5 page{images.length !== 1 ? 's' : ''} — all pages are read together
+                </p>
               )}
 
               {extractError && (
@@ -194,18 +224,18 @@ export default function OrderForm({ order, onClose, onSaved }) {
 
               <button
                 onClick={handleExtract}
-                disabled={!image || extracting}
+                disabled={!images.length || extracting}
                 className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-colors"
               >
                 {extracting ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Reading order...</>
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Reading {images.length > 1 ? `${images.length} pages` : 'order'}...</>
                 ) : (
                   <><Camera className="w-4 h-4" /> Extract Order Details</>
                 )}
               </button>
 
               <p className="text-xs text-center text-gray-400">
-                AI reads the photo and fills in all fields automatically
+                AI reads all pages together and fills in fields automatically
               </p>
             </div>
           )}
