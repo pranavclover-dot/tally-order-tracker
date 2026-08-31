@@ -62,8 +62,11 @@ async function initDB() {
   if (result.rows.length === 0) {
     await db.execute({
       sql: 'INSERT INTO reminder_config (id, days_before, email_enabled, inapp_enabled) VALUES (1, ?, 1, 1)',
-      args: ['7,3,1'],
+      args: ['7,4,2'],
     });
+  } else {
+    // migrate old default to new default
+    await db.execute("UPDATE reminder_config SET days_before='7,4,2' WHERE id=1 AND days_before='7,3,1'");
   }
 }
 

@@ -99,6 +99,39 @@ async function checkManagerOverdue() {
   }
 }
 
+async function checkSalesManagerReminders() {
+  // Anoop and Shani get emailed for ALL orders exactly 1 day before deadline
+  const managersResult = await db.execute(
+    "SELECT name, email FROM salesmen WHERE (name LIKE '%Anoop%' OR name LIKE '%Shani%') AND email IS NOT NULL AND email != ''"
+  );
+  const managers = managersResult.rows;
+  if (managers.length === 0) return;
+
+  const ordersResult = await db.execute("SELECT * FROM orders WHERE status = 'pending'");
+  for (const order of ordersResult.rows) {
+    const daysLeft = getDaysLeft(order.delivery_deadline);
+    if (daysLeft !== 1) continue;
+
+    for (const mgr of managers) {
+      const exists = (await db.execute({
+        sql: "SELECT id FROM notifications WHERE order_id=? AND type='sales-mgr-1day' AND salesman_email=?",
+        args: [order.id, mgr.email],
+      })).rows[0];
+
+      if (!exists) {
+        const message = `1 day left: Order ${order.order_number} for ${order.customer_name} is due tomorrow`;
+        await db.execute({
+          sql: `INSERT INTO notifications (order_id,salesman_name,salesman_email,message,type,days_before_deadline,sent_at,is_read) VALUES (?,?,?,?,'sales-mgr-1day',1,?,0)`,
+          args: [order.id, mgr.name, mgr.email, message, new Date().toISOString()],
+        });
+        sendReminderEmail(mgr.email, mgr.name, order, 1)
+          .then(() => console.log(`[Scheduler] Sales mgr 1-day email: ${order.order_number} → ${mgr.email}`))
+          .catch(err => console.error(`[Scheduler] Sales mgr email failed ${order.order_number}:`, err.message));
+      }
+    }
+  }
+}
+
 async function checkFollowUpReminders() {
   const ordersResult = await db.execute("SELECT * FROM orders WHERE status = 'pending'");
 
@@ -128,6 +161,7 @@ function startScheduler() {
     await syncOrdersFromTally();
     await checkDeadlines();
     await checkManagerOverdue();
+    await checkSalesManagerReminders();
     await checkFollowUpReminders();
   });
 
@@ -135,6 +169,7 @@ function startScheduler() {
     console.log('[Scheduler] Initial check...');
     await checkDeadlines();
     await checkManagerOverdue();
+    await checkSalesManagerReminders();
     await checkFollowUpReminders();
   }, 2000);
 }
