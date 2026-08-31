@@ -47,7 +47,7 @@ async function extractOrderFromImage(imageBuffer, mimeType) {
   const imageUrl = `data:${mimeType || 'image/jpeg'};base64,${base64Image}`;
 
   const response = await groq.chat.completions.create({
-    model: 'llama-3.2-90b-vision-preview',
+    model: 'qwen/qwen3.6-27b',
     messages: [
       {
         role: 'user',
