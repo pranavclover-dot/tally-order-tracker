@@ -1,7 +1,7 @@
 const cron = require('node-cron');
 const { db } = require('./db');
 const { syncOrdersFromTally } = require('./tally');
-const { sendReminderEmail } = require('./mailer');
+const { sendReminderEmail, sendManagerOverdueEmail } = require('./mailer');
 
 function getDaysLeft(deadlineStr) {
   const today = new Date(); today.setHours(0,0,0,0);
@@ -74,6 +74,31 @@ async function checkDeadlines() {
   }
 }
 
+async function checkManagerOverdue() {
+  const ordersResult = await db.execute("SELECT * FROM orders WHERE status = 'pending'");
+  for (const order of ordersResult.rows) {
+    const daysLeft = getDaysLeft(order.delivery_deadline);
+    if (daysLeft >= 0) continue; // not overdue
+
+    const daysOverdue = Math.abs(daysLeft);
+    const exists = (await db.execute({
+      sql: "SELECT id FROM notifications WHERE order_id=? AND type='manager-overdue'",
+      args: [order.id],
+    })).rows[0];
+
+    if (!exists) {
+      const message = `OVERDUE: Order ${order.order_number} for ${order.customer_name} is ${daysOverdue} day(s) overdue`;
+      await db.execute({
+        sql: `INSERT INTO notifications (order_id,salesman_name,salesman_email,message,type,days_before_deadline,sent_at,is_read) VALUES (?,?,?,?,'manager-overdue',0,?,0)`,
+        args: [order.id, 'Manager', process.env.MANAGER_EMAIL || '', message, new Date().toISOString()],
+      });
+      sendManagerOverdueEmail(order, daysOverdue)
+        .then(() => console.log(`[Scheduler] Manager overdue email: ${order.order_number}`))
+        .catch(err => console.error(`[Scheduler] Manager email failed ${order.order_number}:`, err.message));
+    }
+  }
+}
+
 async function checkFollowUpReminders() {
   const ordersResult = await db.execute("SELECT * FROM orders WHERE status = 'pending'");
 
@@ -102,12 +127,14 @@ function startScheduler() {
     console.log('[Scheduler] Hourly run');
     await syncOrdersFromTally();
     await checkDeadlines();
+    await checkManagerOverdue();
     await checkFollowUpReminders();
   });
 
   setTimeout(async () => {
     console.log('[Scheduler] Initial check...');
     await checkDeadlines();
+    await checkManagerOverdue();
     await checkFollowUpReminders();
   }, 2000);
 }

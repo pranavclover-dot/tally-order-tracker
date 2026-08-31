@@ -162,4 +162,20 @@ async function sendReminderEmail(to, salesmanName, order, daysLeft) {
   });
 }
 
-module.exports = { sendReminderEmail };
+async function sendManagerOverdueEmail(order, daysOverdue) {
+  const managerEmail = process.env.MANAGER_EMAIL;
+  const t = getTransporter();
+  if (!t || !managerEmail) return;
+
+  const subject = `[OVERDUE] Order ${order.order_number} — ${order.customer_name} (${daysOverdue}d overdue)`;
+  const html = buildEmailHTML('Manager', order, -daysOverdue);
+
+  await t.sendMail({
+    from: `"Order Tracker" <${process.env.BREVO_USER}>`,
+    to: managerEmail,
+    subject,
+    html,
+  });
+}
+
+module.exports = { sendReminderEmail, sendManagerOverdueEmail };
