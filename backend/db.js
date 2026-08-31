@@ -46,6 +46,16 @@ async function initDB() {
     inapp_enabled INTEGER DEFAULT 1
   )`);
 
+  await db.execute(`CREATE TABLE IF NOT EXISTS order_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    product_name TEXT NOT NULL,
+    quantity REAL DEFAULT 1,
+    amount REAL DEFAULT 0,
+    delivery_deadline TEXT,
+    status TEXT DEFAULT 'pending'
+  )`);
+
   const result = await db.execute('SELECT id FROM reminder_config WHERE id = 1');
   if (result.rows.length === 0) {
     await db.execute({

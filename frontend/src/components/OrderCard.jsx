@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { X, User, Building2, Calendar, IndianRupee, Hash } from 'lucide-react';
+import { X, User, Building2, Calendar, IndianRupee, Hash, Scissors } from 'lucide-react';
 import DeadlineBadge from './DeadlineBadge';
+import SplitBillModal from './SplitBillModal';
 import api from '../api/client';
 
 const formatDate = (d) => { if (!d) return 'N/A'; const [y,m,day]=d.split('-'); return `${day}/${m}/${y}`; };
@@ -16,6 +17,7 @@ const STATUS_STYLES = {
 export default function OrderCard({ order, onClose, onStatusChange }) {
   const [cancelling, setCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [showSplit, setShowSplit] = useState(false);
   if (!order) return null;
 
   const handleCancel = async () => {
@@ -81,6 +83,12 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
               </button>
             </div>
 
+            {/* Split Bill */}
+            <button onClick={() => setShowSplit(true)}
+              className="w-full flex items-center justify-center gap-2 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-blue-200 rounded-lg transition-colors">
+              <Scissors className="w-4 h-4" /> Split Bill (Multiple Products)
+            </button>
+
             {/* Cancel section */}
             {!confirmCancel ? (
               <button onClick={() => setConfirmCancel(true)}
@@ -105,6 +113,9 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
           </div>
         )}
       </div>
+    </div>
+
+      {showSplit && <SplitBillModal order={order} onClose={() => setShowSplit(false)} />}
     </div>
   );
 }

@@ -8,6 +8,7 @@ const { startScheduler } = require('./scheduler');
 
 const authRouter = require('./routes/auth');
 const ordersRouter = require('./routes/orders');
+const orderItemsRouter = require('./routes/orderItems');
 const notificationsRouter = require('./routes/notifications');
 const salesmenRouter = require('./routes/salesmen');
 
@@ -33,6 +34,7 @@ app.use('/api/auth', authRouter);
 
 // API routes — no auth required
 app.use('/api/orders', ordersRouter);
+app.use('/api/orders/:id/items', orderItemsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/salesmen', salesmenRouter);
 
