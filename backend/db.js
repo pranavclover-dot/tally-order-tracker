@@ -53,7 +53,9 @@ async function initDB() {
     quantity REAL DEFAULT 1,
     amount REAL DEFAULT 0,
     delivery_deadline TEXT,
-    status TEXT DEFAULT 'pending'
+    status TEXT DEFAULT 'pending',
+    proof_image TEXT,
+    dispatched_at TEXT
   )`);
 
   const result = await db.execute('SELECT id FROM reminder_config WHERE id = 1');
