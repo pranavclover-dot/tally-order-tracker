@@ -75,16 +75,18 @@ async function extractOrderFromImage(files) {
         ],
       },
     ],
-    max_tokens: 1024,
+    max_tokens: 4096,
     temperature: 0,
   });
 
   const raw = response.choices[0]?.message?.content?.trim() || '';
+  console.log('[Groq] raw response (first 500):', raw.slice(0, 500));
+
   // Strip <think>...</think> blocks (qwen3 thinking mode)
   const text = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
   const match = cleaned.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('Could not parse order data from image');
+  if (!match) throw new Error(`Could not parse order data from image. Model replied: ${raw.slice(0, 200)}`);
 
   const data = JSON.parse(match[0]);
 
