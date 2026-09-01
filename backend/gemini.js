@@ -77,6 +77,7 @@ async function extractOrderFromImage(files) {
     ],
     max_tokens: 1000,
     temperature: 0,
+    reasoning_effort: 'none',
   });
 
   const raw = response.choices[0]?.message?.content?.trim() || '';
