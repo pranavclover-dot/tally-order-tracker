@@ -91,8 +91,8 @@ router.post('/sync', async (req, res) => {
   }
 });
 
-router.post('/extract', upload.array('images', 5), async (req, res) => {
-  const files = req.files?.length ? req.files : (req.file ? [req.file] : []);
+router.post('/extract', upload.any(), async (req, res) => {
+  const files = req.files?.length ? req.files : [];
   if (!files.length) return res.status(400).json({ error: 'No image uploaded' });
   try {
     const data = await extractOrderFromImage(files.map(f => ({ buffer: f.buffer, mimeType: f.mimetype })));
