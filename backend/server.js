@@ -53,6 +53,27 @@ app.put('/api/config/reminders', async (req, res) => {
   res.json(result.rows[0]);
 });
 
+// Send a test reminder email
+app.post('/api/test-email', async (req, res) => {
+  const { to } = req.body;
+  if (!to) return res.status(400).json({ error: 'Email address required' });
+  try {
+    const { sendReminderEmail } = require('./mailer');
+    const fakeOrder = {
+      order_number: 'TEST-001',
+      customer_name: 'Test Customer',
+      order_date: new Date().toISOString().split('T')[0],
+      delivery_deadline: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0],
+      amount: 50000,
+      status: 'pending',
+    };
+    await sendReminderEmail(to, 'Pranav', fakeOrder, 2);
+    res.json({ success: true, message: `Test email sent to ${to}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Frontend is served separately on Vercel — no static serving needed here
 
 app.use((err, req, res, next) => {
