@@ -36,6 +36,7 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
   const isActive = !['completed','cancelled'].includes(order.status);
 
   return (
+    <>
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
 
@@ -115,8 +116,8 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
       </div>
     </div>
 
-      {showSplit && <SplitBillModal order={order} onClose={() => setShowSplit(false)} />}
-    </div>
+    {showSplit && <SplitBillModal order={order} onClose={() => setShowSplit(false)} />}
+    </>
   );
 }
 
