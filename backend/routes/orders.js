@@ -30,6 +30,16 @@ function attachDaysLeft(orders) {
   });
 }
 
+// Returns unique salesman name→email pairs from the orders table
+router.get('/salesman-emails', async (req, res) => {
+  const result = await db.execute(
+    `SELECT salesman_name, salesman_email FROM orders
+     WHERE salesman_name != '' AND salesman_email != ''
+     GROUP BY LOWER(salesman_name)`
+  );
+  res.json(result.rows);
+});
+
 router.get('/', async (req, res) => {
   const { status, salesman, urgency } = req.query;
   let sql = 'SELECT * FROM orders WHERE 1=1';
@@ -183,6 +193,12 @@ router.get('/:id/proof/:index', async (req, res) => {
   const mimeType = meta.match(/:(.*?);/)?.[1] || 'image/jpeg';
   res.set('Content-Type', mimeType);
   res.send(Buffer.from(data, 'base64'));
+});
+
+router.delete('/all', async (req, res) => {
+  await db.execute('DELETE FROM order_items');
+  await db.execute('DELETE FROM orders');
+  res.json({ success: true });
 });
 
 router.delete('/:id', async (req, res) => {

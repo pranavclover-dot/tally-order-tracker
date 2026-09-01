@@ -15,14 +15,22 @@ const STATUS_STYLES = {
   cancelled: 'bg-gray-100 text-gray-500',
 };
 
+const DELETE_PASSWORD = 'clover123';
+
 export default function OrderCard({ order, onClose, onStatusChange }) {
   const [cancelling, setCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelPassword, setCancelPassword] = useState('');
+  const [passwordError, setPasswordError] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   if (!order) return null;
 
   const handleCancel = async () => {
+    if (cancelPassword !== DELETE_PASSWORD) {
+      setPasswordError(true);
+      return;
+    }
     setCancelling(true);
     try {
       await api.patch(`/orders/${order.id}/status`, { status: 'cancelled' });
@@ -32,6 +40,8 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
     } finally {
       setCancelling(false);
       setConfirmCancel(false);
+      setCancelPassword('');
+      setPasswordError(false);
     }
   };
 
@@ -104,19 +114,28 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
 
             {/* Cancel section */}
             {!confirmCancel ? (
-              <button onClick={() => setConfirmCancel(true)}
+              <button onClick={() => { setConfirmCancel(true); setCancelPassword(''); setPasswordError(false); }}
                 className="w-full py-2 text-sm font-medium text-red-500 hover:text-red-700 hover:bg-red-50 border border-red-100 rounded-lg transition-colors">
                 Cancel Order
               </button>
             ) : (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
-                <p className="text-sm text-red-700 font-medium text-center">Are you sure you want to cancel this order?</p>
+                <p className="text-sm text-red-700 font-medium text-center">Cancel this order? Enter password to confirm.</p>
+                <input
+                  type="password"
+                  placeholder="Enter password"
+                  value={cancelPassword}
+                  onChange={(e) => { setCancelPassword(e.target.value); setPasswordError(false); }}
+                  className={`w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 bg-white ${passwordError ? 'border-red-500' : 'border-gray-300'}`}
+                  autoFocus
+                />
+                {passwordError && <p className="text-xs text-red-600 text-center">Incorrect password</p>}
                 <div className="flex gap-2">
-                  <button onClick={() => setConfirmCancel(false)}
+                  <button onClick={() => { setConfirmCancel(false); setCancelPassword(''); setPasswordError(false); }}
                     className="flex-1 py-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
                     No, go back
                   </button>
-                  <button onClick={handleCancel} disabled={cancelling}
+                  <button onClick={handleCancel} disabled={cancelling || !cancelPassword}
                     className="flex-1 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-60 transition-colors">
                     {cancelling ? 'Cancelling...' : 'Yes, Cancel'}
                   </button>

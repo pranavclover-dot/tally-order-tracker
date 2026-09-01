@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Save, Camera, Edit3, Loader2, AlertCircle, CheckCircle2, Upload, Plus, Trash2 } from 'lucide-react';
 import api from '../api/client';
 
@@ -40,6 +40,50 @@ export default function OrderForm({ order, onClose, onSaved }) {
     status: order.status || 'pending',
   } : { ...EMPTY });
 
+  const [salesmen, setSalesmen] = useState([]);
+  const [salesmanEmailMap, setSalesmanEmailMap] = useState({});
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/salesmen').catch(() => ({ data: [] })),
+      api.get('/orders/salesman-emails').catch(() => ({ data: [] })),
+    ]).then(([salesmenRes, emailsRes]) => {
+      const list = salesmenRes.data || [];
+      const map = {};
+      (emailsRes.data || []).forEach(row => {
+        if (row.salesman_name && row.salesman_email)
+          map[row.salesman_name.toLowerCase()] = row.salesman_email;
+      });
+      setSalesmen(list);
+      setSalesmanEmailMap(map);
+
+      // Auto-fill email for existing orders being edited that have no email saved
+      if (order && !order.salesman_email && order.salesman_name) {
+        const key = order.salesman_name.toLowerCase();
+        const found = list.find(s => s.name.toLowerCase() === key);
+        const email = found?.email || map[key] || null;
+        if (email) setForm(prev => ({ ...prev, salesman_email: email }));
+      }
+    });
+  }, []);
+
+  const lookupEmail = (name) => {
+    const key = name.toLowerCase();
+    const fromTable = salesmen.find(s => s.name.toLowerCase() === key);
+    if (fromTable?.email) return fromTable.email;
+    return salesmanEmailMap[key] || null;
+  };
+
+  const handleSalesmanNameChange = (e) => {
+    const name = e.target.value;
+    const email = lookupEmail(name);
+    setForm(prev => ({
+      ...prev,
+      salesman_name: name,
+      salesman_email: email !== null ? email : prev.salesman_email,
+    }));
+  };
+
   const [images, setImages] = useState([]); // [{file, preview}]
   const [lineItems, setLineItems] = useState([]); // extracted from photo
   const [extracting, setExtracting] = useState(false);
@@ -77,22 +121,49 @@ export default function OrderForm({ order, onClose, onSaved }) {
     try {
       const fd = new FormData();
       images.forEach(({ file }) => fd.append('images', file));
-      const res = await api.post('/orders/extract', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+
+      // Fetch everything in parallel — fresh salesmen data avoids stale-closure issues
+      const [res, salesmenRes, emailsRes] = await Promise.all([
+        api.post('/orders/extract', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
+        api.get('/salesmen').catch(() => ({ data: [] })),
+        api.get('/orders/salesman-emails').catch(() => ({ data: [] })),
+      ]);
+
+      // Build a fresh email lookup from the just-fetched data
+      const freshSalesmen = salesmenRes.data || [];
+      const freshMap = {};
+      (emailsRes.data || []).forEach(row => {
+        if (row.salesman_name && row.salesman_email)
+          freshMap[row.salesman_name.toLowerCase()] = row.salesman_email;
       });
+      const freshLookup = (name) => {
+        const key = name.toLowerCase();
+        const found = freshSalesmen.find(s => s.name.toLowerCase() === key);
+        return found?.email || freshMap[key] || null;
+      };
+
+      // Also update state so the manual-entry tab is up to date
+      setSalesmen(freshSalesmen);
+      setSalesmanEmailMap(freshMap);
+
       const d = res.data;
+      const extractedName = d.salesman_name || '';
+      const foundEmail = freshLookup(extractedName);
+
       setForm((prev) => ({
         ...prev,
         order_number:       d.order_number       || prev.order_number,
         customer_name:      d.customer_name      || prev.customer_name,
-        salesman_name:      d.salesman_name      || prev.salesman_name,
+        salesman_name:      extractedName        || prev.salesman_name,
+        salesman_email:     foundEmail           || prev.salesman_email,
         order_date:         toInputDate(d.order_date)         || prev.order_date,
         delivery_deadline:  toInputDate(d.delivery_deadline)  || prev.delivery_deadline,
         amount:             d.amount != null ? String(d.amount) : prev.amount,
       }));
+
       if (Array.isArray(d.line_items) && d.line_items.length) setLineItems(d.line_items);
       setExtracted(true);
-      setTab('manual'); // switch to form tab to review
+      setTab('manual');
     } catch (err) {
       setExtractError(err.response?.data?.error || 'Could not read the image. Please try a clearer photo.');
     } finally {
@@ -285,7 +356,17 @@ export default function OrderForm({ order, onClose, onSaved }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Salesman Name">
-                  <input type="text" placeholder="e.g. Raj Sharma" className={INPUT} {...f('salesman_name')} />
+                  <input
+                    type="text"
+                    placeholder="e.g. Raj Sharma"
+                    className={INPUT}
+                    list="salesman-list"
+                    value={form.salesman_name}
+                    onChange={handleSalesmanNameChange}
+                  />
+                  <datalist id="salesman-list">
+                    {salesmen.map(s => <option key={s.id} value={s.name} />)}
+                  </datalist>
                 </Field>
                 <Field label="Salesman Email">
                   <input type="email" placeholder="raj@company.com" className={INPUT} {...f('salesman_email')} />

@@ -63,6 +63,17 @@ async function initDB() {
     await db.execute('ALTER TABLE orders ADD COLUMN proof_images TEXT');
   } catch (_) {}
 
+  // Backfill salesman emails on every startup — fills any order missing an email
+  try {
+    const salesmenRows = (await db.execute({ sql: "SELECT name, email FROM salesmen WHERE email IS NOT NULL AND email != ''", args: [] })).rows;
+    for (const s of salesmenRows) {
+      await db.execute({
+        sql: `UPDATE orders SET salesman_email = ? WHERE LOWER(salesman_name) = LOWER(?) AND (salesman_email IS NULL OR salesman_email = '')`,
+        args: [s.email, s.name],
+      });
+    }
+  } catch (_) {}
+
   const result = await db.execute('SELECT id FROM reminder_config WHERE id = 1');
   if (result.rows.length === 0) {
     await db.execute({

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit2, Trash2, X, User, Mail, Phone, Package, Save, RefreshCw } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, User, Mail, Phone, Package, Save, RefreshCw, Zap } from 'lucide-react';
 import api from '../api/client';
 
 const EMPTY_FORM = { name: '', email: '', phone: '' };
@@ -69,6 +69,12 @@ export default function Salesmen() {
     fetchSalesmen();
   };
 
+  const handleBackfill = async () => {
+    const res = await api.post('/salesmen/backfill-emails');
+    alert(`Done — ${res.data.updated} order${res.data.updated !== 1 ? 's' : ''} updated with missing emails.`);
+    fetchSalesmen();
+  };
+
   return (
     <>
       <div className="space-y-5">
@@ -77,13 +83,23 @@ export default function Salesmen() {
             <h1 className="text-2xl font-bold text-gray-900">Salesmen</h1>
             <p className="text-sm text-gray-500 mt-1">{salesmen.length} registered salesman{salesmen.length !== 1 ? 's' : ''}</p>
           </div>
-          <button
-            onClick={openAdd}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add Salesman
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBackfill}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 text-sm font-medium rounded-lg hover:bg-amber-100 border border-amber-200 transition-colors"
+              title="Fill missing emails in existing orders from this list"
+            >
+              <Zap className="w-4 h-4" />
+              Fix Missing Emails
+            </button>
+            <button
+              onClick={openAdd}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Salesman
+            </button>
+          </div>
         </div>
 
         {loading ? (

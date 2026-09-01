@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Plus, Pencil, Trash2, RefreshCw } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
 import api from '../api/client';
 import DeadlineBadge from '../components/DeadlineBadge';
 import OrderCard from '../components/OrderCard';
 import OrderForm from '../components/OrderForm';
+
+const DELETE_PASSWORD = 'clover123';
 
 const formatDate = (d) => {
   if (!d) return 'N/A';
@@ -30,6 +32,11 @@ export default function Orders() {
   const [selected, setSelected] = useState(null);   // OrderCard detail view
   const [editing, setEditing] = useState(null);      // OrderForm for edit (pass order)
   const [showAdd, setShowAdd] = useState(false);     // OrderForm for new order
+  // Delete password modal state
+  const [deleteModal, setDeleteModal] = useState(null); // { type: 'single'|'all', id?, orderNum? }
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -54,10 +61,37 @@ export default function Orders() {
     fetchOrders();
   };
 
-  const handleDelete = async (id, orderNum) => {
-    if (!confirm(`Delete order ${orderNum}? This cannot be undone.`)) return;
-    await api.delete(`/orders/${id}`);
-    fetchOrders();
+  const openDeleteModal = (type, id, orderNum) => {
+    setDeleteModal({ type, id, orderNum });
+    setDeletePassword('');
+    setDeleteError(false);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModal(null);
+    setDeletePassword('');
+    setDeleteError(false);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (deletePassword !== DELETE_PASSWORD) {
+      setDeleteError(true);
+      return;
+    }
+    setDeleting(true);
+    try {
+      if (deleteModal.type === 'all') {
+        await api.delete('/orders/all');
+      } else {
+        await api.delete(`/orders/${deleteModal.id}`);
+      }
+      closeDeleteModal();
+      fetchOrders();
+    } catch (err) {
+      console.error('Delete failed:', err);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const allSalesmen = [...new Set(orders.map((o) => o.salesman_name).filter(Boolean))].sort();
@@ -77,13 +111,22 @@ export default function Orders() {
             <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
             <p className="text-sm text-gray-500 mt-1">{filtered.length} order{filtered.length !== 1 ? 's' : ''}</p>
           </div>
-          <button
-            onClick={() => setShowAdd(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add Order
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => openDeleteModal('all')}
+              className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 border border-red-200 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete All
+            </button>
+            <button
+              onClick={() => setShowAdd(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Order
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -174,7 +217,7 @@ export default function Orders() {
                             <Pencil className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
                           </button>
                           <button
-                            onClick={() => handleDelete(order.id, order.order_number)}
+                            onClick={() => openDeleteModal('single', order.id, order.order_number)}
                             className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
                             title="Delete"
                           >
@@ -215,6 +258,52 @@ export default function Orders() {
           onClose={() => setEditing(null)}
           onSaved={fetchOrders}
         />
+      )}
+
+      {/* Delete password modal */}
+      {deleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closeDeleteModal}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">
+                  {deleteModal.type === 'all' ? 'Delete All Orders' : `Delete ${deleteModal.orderNum}`}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {deleteModal.type === 'all'
+                    ? 'This will permanently delete every order. This cannot be undone.'
+                    : 'This order will be permanently deleted.'}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-gray-600">Enter password to confirm</label>
+              <input
+                type="password"
+                placeholder="Password"
+                value={deletePassword}
+                onChange={e => { setDeletePassword(e.target.value); setDeleteError(false); }}
+                onKeyDown={e => e.key === 'Enter' && handleDeleteConfirm()}
+                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 ${deleteError ? 'border-red-500' : 'border-gray-300'}`}
+                autoFocus
+              />
+              {deleteError && <p className="text-xs text-red-600">Incorrect password</p>}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={closeDeleteModal}
+                className="flex-1 py-2 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleDeleteConfirm} disabled={deleting || !deletePassword}
+                className="flex-1 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 rounded-xl transition-colors">
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

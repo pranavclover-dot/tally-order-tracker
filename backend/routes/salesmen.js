@@ -6,7 +6,7 @@ router.get('/', async (req, res) => {
   const result = await db.execute('SELECT * FROM salesmen ORDER BY name');
   const withCounts = await Promise.all(result.rows.map(async (s) => {
     const active = await db.execute({
-      sql: "SELECT COUNT(*) as count FROM orders WHERE salesman_name = ? AND status != 'completed'",
+      sql: "SELECT COUNT(*) as count FROM orders WHERE LOWER(salesman_name) = LOWER(?) AND status != 'completed'",
       args: [s.name],
     });
     return { ...s, activeOrders: Number(active.rows[0].count) };
@@ -37,6 +37,20 @@ router.put('/:id', async (req, res) => {
   const updated = (await db.execute({ sql: 'SELECT * FROM salesmen WHERE id = ?', args: [req.params.id] })).rows[0];
   if (!updated) return res.status(404).json({ error: 'Salesman not found' });
   res.json({ ...updated });
+});
+
+// Patch all orders that have a salesman name but no email
+router.post('/backfill-emails', async (req, res) => {
+  const salesmen = (await db.execute('SELECT name, email FROM salesmen WHERE email IS NOT NULL')).rows;
+  let updated = 0;
+  for (const s of salesmen) {
+    const r = await db.execute({
+      sql: `UPDATE orders SET salesman_email = ? WHERE LOWER(salesman_name) = LOWER(?) AND (salesman_email IS NULL OR salesman_email = '')`,
+      args: [s.email, s.name],
+    });
+    updated += Number(r.rowsAffected);
+  }
+  res.json({ updated });
 });
 
 router.delete('/:id', async (req, res) => {
