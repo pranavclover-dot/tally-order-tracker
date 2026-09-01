@@ -84,9 +84,13 @@ export default function CompleteOrderModal({ order, onDone, onClose }) {
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
             onChange={e => addFiles(e.target.files)} />
 
+          {files.length === 0 && (
+            <p className="text-xs text-center text-red-500 font-medium">At least 1 photo is required to complete the order</p>
+          )}
+
           <div className="flex gap-2">
-            <button onClick={handleConfirm} disabled={uploading}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition-colors">
+            <button onClick={handleConfirm} disabled={uploading || files.length === 0}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors">
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
               {uploading ? 'Saving...' : 'Confirm Completed'}
             </button>
@@ -95,8 +99,6 @@ export default function CompleteOrderModal({ order, onDone, onClose }) {
               Cancel
             </button>
           </div>
-
-          <p className="text-xs text-center text-gray-400">Photos are optional — you can confirm without uploading</p>
         </div>
       </div>
     </div>

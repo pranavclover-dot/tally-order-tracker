@@ -23,7 +23,11 @@ function calcDaysLeft(deadlineStr) {
 }
 
 function attachDaysLeft(orders) {
-  return orders.map((o) => ({ ...o, daysLeft: calcDaysLeft(o.delivery_deadline) }));
+  return orders.map((o) => {
+    const proofCount = o.proof_images ? JSON.parse(o.proof_images).length : 0;
+    const { proof_images, ...rest } = o;
+    return { ...rest, daysLeft: calcDaysLeft(o.delivery_deadline), proof_count: proofCount };
+  });
 }
 
 router.get('/', async (req, res) => {

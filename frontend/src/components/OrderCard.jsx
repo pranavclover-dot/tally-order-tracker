@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, User, Building2, Calendar, IndianRupee, Hash, Scissors } from 'lucide-react';
+import { X, User, Building2, Calendar, IndianRupee, Hash, Scissors, Eye } from 'lucide-react';
 import DeadlineBadge from './DeadlineBadge';
 import SplitBillModal from './SplitBillModal';
 import CompleteOrderModal from './CompleteOrderModal';
@@ -68,6 +68,22 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
             <span className={`px-3 py-1 rounded-full text-xs font-semibold capitalize ${STATUS_STYLES[order.status]||'bg-gray-100 text-gray-600'}`}>{order.status}</span>
           </div>
         </div>
+
+        {/* Proof photos — visible on completed orders */}
+        {order.status === 'completed' && order.proof_count > 0 && (
+          <div className="px-5 pb-4">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Proof Photos</p>
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: order.proof_count }).map((_, i) => (
+                <button key={i}
+                  onClick={() => window.open(`${import.meta.env.VITE_API_URL}/orders/${order.id}/proof/${i}`, '_blank')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors">
+                  <Eye className="w-3.5 h-3.5" /> Photo {i + 1}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Action buttons */}
         {isActive && (
