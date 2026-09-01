@@ -8,8 +8,8 @@
     "dev": "node --watch server.js"
   },
   "dependencies": {
-    "@libsql/client": "^0.14.0",
     "@google/generative-ai": "^0.21.0",
+    "@libsql/client": "^0.14.0",
     "axios": "^1.6.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.4",
@@ -17,6 +17,7 @@
     "multer": "^2.1.1",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.9",
+    "web-push": "^3.6.7",
     "xml2js": "^0.6.2"
   }
 }

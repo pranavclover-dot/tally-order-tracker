@@ -53,6 +53,33 @@ app.put('/api/config/reminders', async (req, res) => {
   res.json(result.rows[0]);
 });
 
+// Push notification endpoints
+app.get('/api/push/vapid-key', (req, res) => {
+  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || null });
+});
+
+app.post('/api/push/subscribe', async (req, res) => {
+  const { subscription } = req.body;
+  if (!subscription) return res.status(400).json({ error: 'No subscription provided' });
+  const subJson = JSON.stringify(subscription);
+  try {
+    await db.execute({
+      sql: 'INSERT OR IGNORE INTO push_subscriptions (subscription, created_at) VALUES (?, ?)',
+      args: [subJson, new Date().toISOString()],
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/push/unsubscribe', async (req, res) => {
+  const { subscription } = req.body;
+  if (!subscription) return res.status(400).json({ error: 'No subscription' });
+  await db.execute({ sql: 'DELETE FROM push_subscriptions WHERE subscription = ?', args: [JSON.stringify(subscription)] });
+  res.json({ success: true });
+});
+
 // Send a test reminder email
 app.post('/api/test-email', async (req, res) => {
   const { to } = req.body;

@@ -1,7 +1,7 @@
 const cron = require('node-cron');
 const { db } = require('./db');
 const { syncOrdersFromTally } = require('./tally');
-const { sendReminderEmail, sendManagerOverdueEmail } = require('./mailer');
+const { sendReminderEmail, sendManagerOverdueEmail, sendSMS, sendPushToAll } = require('./mailer');
 
 function getDaysLeft(deadlineStr) {
   const today = new Date(); today.setHours(0,0,0,0);
@@ -67,6 +67,21 @@ async function checkDeadlines() {
                 console.log(`[Scheduler] Email: ${order.order_number} → ${order.salesman_email}`);
               })
               .catch(err => console.error(`[Scheduler] Email failed ${order.order_number}:`, err.message));
+
+            // SMS to salesman's phone
+            const salesmanRow = (await db.execute({
+              sql: 'SELECT phone FROM salesmen WHERE LOWER(name) = LOWER(?)',
+              args: [order.salesman_name],
+            })).rows[0];
+            if (salesmanRow?.phone) {
+              sendSMS(salesmanRow.phone, message);
+            }
+
+            // Web push to all subscribed browsers
+            sendPushToAll(
+              `Order Tracker — ${daysLeft <= 0 ? 'OVERDUE' : `${daysLeft}d left`}`,
+              message
+            ).catch(() => {});
           }
         }
       }

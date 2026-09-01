@@ -63,6 +63,13 @@ async function initDB() {
     await db.execute('ALTER TABLE orders ADD COLUMN proof_images TEXT');
   } catch (_) {}
 
+  // Push subscriptions table
+  await db.execute(`CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subscription TEXT UNIQUE NOT NULL,
+    created_at TEXT
+  )`);
+
   // Backfill salesman emails on every startup — fills any order missing an email
   try {
     const salesmenRows = (await db.execute({ sql: "SELECT name, email FROM salesmen WHERE email IS NOT NULL AND email != ''", args: [] })).rows;

@@ -1,5 +1,15 @@
 require('dotenv').config();
 const axios = require('axios');
+const webpush = require('web-push');
+
+// Init VAPID once
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    `mailto:${process.env.BREVO_USER || 'admin@example.com'}`,
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+}
 
 function getApiKey() {
   return process.env.BREVO_API_KEY || process.env.BREVO_PASS || null;
@@ -163,4 +173,36 @@ async function sendManagerOverdueEmail(order, daysOverdue) {
   await sendEmail(managerEmail, subject, buildEmailHTML('Manager', order, -daysOverdue));
 }
 
-module.exports = { sendReminderEmail, sendManagerOverdueEmail };
+async function sendSMS(phone, message) {
+  const apiKey = process.env.FAST2SMS_API_KEY;
+  if (!apiKey || !phone) return;
+  const clean = phone.replace(/\D/g, '').replace(/^91/, '').slice(-10);
+  if (clean.length !== 10) { console.warn('[SMS] Invalid phone:', phone); return; }
+  try {
+    await axios.get('https://www.fast2sms.com/dev/bulkV2', {
+      params: { authorization: apiKey, route: 'q', numbers: clean, message, language: 'english', flash: 0 },
+      timeout: 10000,
+    });
+    console.log('[SMS] Sent to', clean);
+  } catch (err) {
+    console.error('[SMS] Failed:', err.message);
+  }
+}
+
+async function sendPushToAll(title, body) {
+  if (!process.env.VAPID_PUBLIC_KEY) return;
+  const { db } = require('./db');
+  const rows = (await db.execute('SELECT id, subscription FROM push_subscriptions')).rows;
+  for (const row of rows) {
+    try {
+      await webpush.sendNotification(JSON.parse(row.subscription), JSON.stringify({ title, body }));
+    } catch (err) {
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        // Expired subscription — clean up
+        await db.execute({ sql: 'DELETE FROM push_subscriptions WHERE id = ?', args: [row.id] });
+      }
+    }
+  }
+}
+
+module.exports = { sendReminderEmail, sendManagerOverdueEmail, sendSMS, sendPushToAll };
