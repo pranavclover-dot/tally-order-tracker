@@ -178,13 +178,14 @@ async function sendSMS(phone, message) {
   const topic = process.env.NTFY_TOPIC;
   if (!topic) return;
   try {
-    await axios.post(`https://ntfy.sh/${topic}`, message, {
-      headers: {
-        'Content-Type': 'text/plain',
-        'Title': 'Order Tracker Alert',
-        'Priority': 'high',
-        'Tags': 'package',
-      },
+    await axios.post('https://ntfy.sh/', {
+      topic,
+      title: 'Order Tracker Alert',
+      message,
+      priority: 4,
+      tags: ['package'],
+    }, {
+      headers: { 'Content-Type': 'application/json' },
       timeout: 10000,
     });
     console.log('[ntfy] Notification sent');
