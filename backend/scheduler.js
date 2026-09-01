@@ -72,6 +72,9 @@ async function checkDeadlines() {
             const ntfyTopic = salesmanNtfyTopic(order.salesman_name);
             if (ntfyTopic) sendNtfy(ntfyTopic, 'Order Tracker Alert', message);
 
+            // Ashish gets notified when order is overdue by more than 3 days
+            if (daysLeft < -3) sendNtfy('clover-ashish', '⚠ Order Overdue 3+ Days', message);
+
             // Web push to all subscribed browsers
             sendPushToAll(
               `Order Tracker — ${daysLeft <= 0 ? 'OVERDUE' : `${daysLeft}d left`}`,
