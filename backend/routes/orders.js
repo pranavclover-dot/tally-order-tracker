@@ -78,7 +78,26 @@ router.post('/', async (req, res) => {
     ],
   });
 
-  const created = (await db.execute({ sql: 'SELECT * FROM orders WHERE id = ?', args: [Number(ins.lastInsertRowid)] })).rows[0];
+  const orderId = Number(ins.lastInsertRowid);
+
+  // Save line items if provided (from photo scan)
+  const lineItems = Array.isArray(req.body.line_items) ? req.body.line_items : [];
+  for (const item of lineItems) {
+    if (!item.product_name) continue;
+    await db.execute({
+      sql: 'INSERT INTO order_items (order_id, product_name, quantity, amount, delivery_deadline, status) VALUES (?,?,?,?,?,?)',
+      args: [
+        orderId,
+        String(item.product_name).trim(),
+        parseFloat(item.quantity) || 1,
+        parseFloat(item.amount) || 0,
+        item.delivery_deadline || null,
+        'pending',
+      ],
+    });
+  }
+
+  const created = (await db.execute({ sql: 'SELECT * FROM orders WHERE id = ?', args: [orderId] })).rows[0];
   res.status(201).json({ ...created, daysLeft: calcDaysLeft(created.delivery_deadline) });
 });
 

@@ -41,6 +41,7 @@ export default function OrderForm({ order, onClose, onSaved }) {
   } : { ...EMPTY });
 
   const [images, setImages] = useState([]); // [{file, preview}]
+  const [lineItems, setLineItems] = useState([]); // extracted from photo
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState('');
   const [extracted, setExtracted] = useState(false);
@@ -89,6 +90,7 @@ export default function OrderForm({ order, onClose, onSaved }) {
         delivery_deadline:  toInputDate(d.delivery_deadline)  || prev.delivery_deadline,
         amount:             d.amount != null ? String(d.amount) : prev.amount,
       }));
+      if (Array.isArray(d.line_items) && d.line_items.length) setLineItems(d.line_items);
       setExtracted(true);
       setTab('manual'); // switch to form tab to review
     } catch (err) {
@@ -107,7 +109,7 @@ export default function OrderForm({ order, onClose, onSaved }) {
       if (order?.id) {
         await api.put(`/orders/${order.id}`, form);
       } else {
-        await api.post('/orders', form);
+        await api.post('/orders', { ...form, line_items: lineItems });
       }
       onSaved();
       onClose();
@@ -244,9 +246,16 @@ export default function OrderForm({ order, onClose, onSaved }) {
           {(tab === 'manual' || order) && (
             <div className="p-5 space-y-4">
               {extracted && (
-                <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm px-3 py-2 rounded-lg">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Fields filled from photo — please review before saving
+                <div className="bg-green-50 border border-green-200 text-green-700 text-sm px-3 py-2 rounded-lg space-y-1">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                    Fields filled from photo — please review before saving
+                  </div>
+                  {lineItems.length > 0 && (
+                    <p className="text-xs text-green-600 pl-6">
+                      {lineItems.length} product{lineItems.length !== 1 ? 's' : ''} extracted — will appear in Split Bill
+                    </p>
+                  )}
                 </div>
               )}
 

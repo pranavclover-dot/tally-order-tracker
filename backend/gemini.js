@@ -3,7 +3,7 @@ const Groq = require('groq-sdk');
 
 const PROMPT = `You are reading a sales order document image, likely from an Indian business (Tally ERP format).
 
-Extract the following fields and return ONLY a valid JSON object. No explanation, no markdown.
+Extract the following fields and return ONLY a valid JSON object. No explanation, no markdown, no thinking.
 
 {
   "order_number": "voucher number / order number / SO number (string)",
@@ -11,13 +11,27 @@ Extract the following fields and return ONLY a valid JSON object. No explanation
   "salesman_name": "salesman name — look for 'Salesman:' label (string, null if not found)",
   "order_date": "the document/voucher date in YYYY-MM-DD format",
   "delivery_deadline": "delivery date in YYYY-MM-DD format — see rules below",
-  "amount": total invoice/order amount as a plain number, no currency symbols or commas
+  "amount": total invoice/order amount as a plain number no currency symbols or commas,
+  "line_items": [
+    {
+      "product_name": "item/product name from line items table",
+      "quantity": numeric quantity as a number,
+      "amount": line item amount as a plain number,
+      "delivery_deadline": "per-item delivery date in YYYY-MM-DD if shown, else null"
+    }
+  ]
 }
 
-DELIVERY DATE RULES (in priority order):
+LINE ITEMS RULES:
+- Extract ALL product rows from the items/particulars table in the document.
+- If no line items table exists, return line_items as an empty array [].
+- quantity and amount must be plain numbers (not strings).
+- Per-item delivery dates: look for a "Due on" or "Delivery" column in the line items table.
+
+DELIVERY DATE RULES (for the top-level delivery_deadline, in priority order):
 1. Look for a field called "Terms of Delivery" — it often contains a date like "DISPATCH-07-06-2026" or "DISPATCH 07/06/2026". Extract that date. Format "DISPATCH-DD-MM-YYYY" means day=DD, month=MM, year=YYYY → output as YYYY-MM-DD.
 2. Look for any field labelled "Delivery Date", "Ship By", "Due Date", "Dispatch Date".
-3. In line items, look for a "Due on" column with a date.
+3. If per-item due dates exist, use the latest one as the overall deadline.
 4. If absolutely no delivery date is found anywhere, set delivery_deadline to order_date + 12 days.
 
 DATE FORMAT RULES:
@@ -26,8 +40,8 @@ DATE FORMAT RULES:
 - Always output dates as YYYY-MM-DD.
 
 AMOUNT RULES:
-- Use the final total (bottom right, often labeled "Total" or shown in words as "INR ... Only").
-- Return a plain number: 26387.00 not "₹26,387.00".
+- Top-level amount: the final total (bottom right, often labeled "Total" or shown in words as "INR ... Only").
+- Return plain numbers: 26387.00 not "₹26,387.00".
 
 Return ONLY the JSON object. No other text whatsoever.`;
 
