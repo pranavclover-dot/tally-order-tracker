@@ -59,7 +59,7 @@ async function extractOrderFromImage(files) {
 
   // files is an array of {buffer, mimeType} — qwen supports up to 5 images
   const fileList = Array.isArray(files) ? files : [files];
-  const imageContent = fileList.slice(0, 5).map(({ buffer, mimeType }) => ({
+  const imageContent = fileList.slice(0, 3).map(({ buffer, mimeType }) => ({
     type: 'image_url',
     image_url: { url: `data:${mimeType || 'image/jpeg'};base64,${buffer.toString('base64')}` },
   }));
@@ -75,7 +75,7 @@ async function extractOrderFromImage(files) {
         ],
       },
     ],
-    max_tokens: 4096,
+    max_tokens: 1000,
     temperature: 0,
   });
 

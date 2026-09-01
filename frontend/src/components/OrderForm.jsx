@@ -54,7 +54,7 @@ export default function OrderForm({ order, onClose, onSaved }) {
     if (!valid.length) return;
     setImages(prev => {
       const combined = [...prev, ...valid.map(f => ({ file: f, preview: URL.createObjectURL(f) }))];
-      return combined.slice(0, 5); // max 5
+      return combined.slice(0, 3); // max 3 (Groq free tier TPM limit)
     });
     setExtracted(false);
     setExtractError('');
@@ -169,7 +169,7 @@ export default function OrderForm({ order, onClose, onSaved }) {
                       </span>
                     </div>
                   ))}
-                  {images.length < 5 && (
+                  {images.length < 3 && (
                     <button
                       onClick={() => fileRef.current?.click()}
                       className="aspect-square rounded-lg border-2 border-dashed border-gray-200 hover:border-blue-300 hover:bg-blue-50/40 flex flex-col items-center justify-center gap-1 transition-colors"
@@ -191,7 +191,7 @@ export default function OrderForm({ order, onClose, onSaved }) {
                 >
                   <Upload className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                   <p className="text-sm font-medium text-gray-600">Click or drag & drop photos</p>
-                  <p className="text-xs text-gray-400 mt-1">Upload up to 5 pages — JPG, PNG, HEIC</p>
+                  <p className="text-xs text-gray-400 mt-1">Upload up to 3 pages — JPG, PNG, HEIC</p>
                 </div>
               )}
 
@@ -206,7 +206,7 @@ export default function OrderForm({ order, onClose, onSaved }) {
 
               {images.length > 0 && (
                 <p className="text-xs text-center text-gray-400">
-                  {images.length}/5 page{images.length !== 1 ? 's' : ''} — all pages are read together
+                  {images.length}/3 page{images.length !== 1 ? 's' : ''} — all pages are read together
                 </p>
               )}
 
