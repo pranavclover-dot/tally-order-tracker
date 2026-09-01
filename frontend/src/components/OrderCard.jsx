@@ -72,12 +72,6 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
           <div className="px-5 pb-5 space-y-2">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Update Status</p>
             <div className="flex gap-2">
-              {order.status === 'pending' && (
-                <button onClick={() => onStatusChange(order.id,'shipped')}
-                  className="flex-1 py-2 text-sm font-medium bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-lg hover:bg-yellow-100 transition-colors">
-                  Mark Shipped
-                </button>
-              )}
               <button onClick={() => onStatusChange(order.id,'completed')}
                 className="flex-1 py-2 text-sm font-medium bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 transition-colors">
                 Mark Completed
