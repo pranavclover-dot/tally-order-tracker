@@ -174,18 +174,22 @@ async function sendManagerOverdueEmail(order, daysOverdue) {
 }
 
 async function sendSMS(phone, message) {
-  const apiKey = process.env.FAST2SMS_API_KEY;
-  if (!apiKey || !phone) return;
-  const clean = phone.replace(/\D/g, '').replace(/^91/, '').slice(-10);
-  if (clean.length !== 10) { console.warn('[SMS] Invalid phone:', phone); return; }
+  // ntfy.sh — free push notifications (phone must have ntfy app + subscribed to topic)
+  const topic = process.env.NTFY_TOPIC;
+  if (!topic) return;
   try {
-    await axios.get('https://www.fast2sms.com/dev/bulkV2', {
-      params: { authorization: apiKey, route: 'q', numbers: clean, message, language: 'english', flash: 0 },
+    await axios.post(`https://ntfy.sh/${topic}`, message, {
+      headers: {
+        'Content-Type': 'text/plain',
+        'Title': 'Order Tracker Alert',
+        'Priority': 'high',
+        'Tags': 'package',
+      },
       timeout: 10000,
     });
-    console.log('[SMS] Sent to', clean);
+    console.log('[ntfy] Notification sent');
   } catch (err) {
-    console.error('[SMS] Failed:', err.message);
+    console.error('[ntfy] Failed:', err.message);
   }
 }
 
