@@ -173,14 +173,18 @@ async function sendManagerOverdueEmail(order, daysOverdue) {
   await sendEmail(managerEmail, subject, buildEmailHTML('Manager', order, -daysOverdue));
 }
 
-async function sendSMS(phone, message) {
-  // ntfy.sh — free push notifications (phone must have ntfy app + subscribed to topic)
-  const topic = process.env.NTFY_TOPIC;
+function salesmanNtfyTopic(salesmanName) {
+  const slug = (salesmanName || '').toLowerCase().trim()
+    .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  return slug ? `clover-${slug}` : null;
+}
+
+async function sendNtfy(topic, title, message) {
   if (!topic) return;
   try {
     await axios.post('https://ntfy.sh/', {
       topic,
-      title: 'Order Tracker Alert',
+      title: title || 'Order Tracker Alert',
       message,
       priority: 4,
       tags: ['package'],
@@ -188,7 +192,7 @@ async function sendSMS(phone, message) {
       headers: { 'Content-Type': 'application/json' },
       timeout: 10000,
     });
-    console.log('[ntfy] Notification sent');
+    console.log(`[ntfy] Sent to topic: ${topic}`);
   } catch (err) {
     console.error('[ntfy] Failed:', err.message);
   }
@@ -210,4 +214,4 @@ async function sendPushToAll(title, body) {
   }
 }
 
-module.exports = { sendReminderEmail, sendManagerOverdueEmail, sendSMS, sendPushToAll };
+module.exports = { sendReminderEmail, sendManagerOverdueEmail, sendNtfy, salesmanNtfyTopic, sendPushToAll };
