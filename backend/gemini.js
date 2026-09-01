@@ -61,11 +61,13 @@ async function extractOrderFromImage(files) {
         ],
       },
     ],
-    max_tokens: 512,
+    max_tokens: 1024,
     temperature: 0,
   });
 
-  const text = response.choices[0]?.message?.content?.trim() || '';
+  const raw = response.choices[0]?.message?.content?.trim() || '';
+  // Strip <think>...</think> blocks (qwen3 thinking mode)
+  const text = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
   const match = cleaned.match(/\{[\s\S]*\}/);
   if (!match) throw new Error('Could not parse order data from image');
