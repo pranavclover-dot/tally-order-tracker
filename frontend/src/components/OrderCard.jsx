@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, User, Building2, Calendar, IndianRupee, Hash, Scissors } from 'lucide-react';
 import DeadlineBadge from './DeadlineBadge';
 import SplitBillModal from './SplitBillModal';
+import CompleteOrderModal from './CompleteOrderModal';
 import api from '../api/client';
 
 const formatDate = (d) => { if (!d) return 'N/A'; const [y,m,day]=d.split('-'); return `${day}/${m}/${y}`; };
@@ -18,6 +19,7 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
   const [cancelling, setCancelling] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
+  const [showComplete, setShowComplete] = useState(false);
   if (!order) return null;
 
   const handleCancel = async () => {
@@ -72,7 +74,7 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
           <div className="px-5 pb-5 space-y-2">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Update Status</p>
             <div className="flex gap-2">
-              <button onClick={() => onStatusChange(order.id,'completed')}
+              <button onClick={() => setShowComplete(true)}
                 className="flex-1 py-2 text-sm font-medium bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 transition-colors">
                 Mark Completed
               </button>
@@ -111,6 +113,13 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
     </div>
 
     {showSplit && <SplitBillModal order={order} onClose={() => setShowSplit(false)} />}
+    {showComplete && (
+      <CompleteOrderModal
+        order={order}
+        onDone={(updated) => onStatusChange(order.id, 'completed', updated)}
+        onClose={() => setShowComplete(false)}
+      />
+    )}
     </>
   );
 }

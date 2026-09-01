@@ -58,6 +58,11 @@ async function initDB() {
     dispatched_at TEXT
   )`);
 
+  // Add proof_images column to orders if missing (migration)
+  try {
+    await db.execute('ALTER TABLE orders ADD COLUMN proof_images TEXT');
+  } catch (_) {}
+
   const result = await db.execute('SELECT id FROM reminder_config WHERE id = 1');
   if (result.rows.length === 0) {
     await db.execute({

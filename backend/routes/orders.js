@@ -152,6 +152,35 @@ router.patch('/:id/status', async (req, res) => {
   res.json({ ...updated, daysLeft: calcDaysLeft(updated.delivery_deadline) });
 });
 
+// PATCH /orders/:id/complete — mark completed with optional proof photos
+router.patch('/:id/complete', upload.any(), async (req, res) => {
+  const files = req.files || [];
+  const proofImages = files.map(f => `data:${f.mimetype};base64,${f.buffer.toString('base64')}`);
+  const proofJson = proofImages.length ? JSON.stringify(proofImages) : null;
+
+  await db.execute({
+    sql: 'UPDATE orders SET status=?, proof_images=COALESCE(?,proof_images) WHERE id=?',
+    args: ['completed', proofJson, req.params.id],
+  });
+  const updated = (await db.execute({ sql: 'SELECT * FROM orders WHERE id = ?', args: [req.params.id] })).rows[0];
+  if (!updated) return res.status(404).json({ error: 'Order not found' });
+  res.json({ ...updated, daysLeft: calcDaysLeft(updated.delivery_deadline) });
+});
+
+// GET /orders/:id/proof/:index — serve one proof image
+router.get('/:id/proof/:index', async (req, res) => {
+  const result = await db.execute({ sql: 'SELECT proof_images FROM orders WHERE id=?', args: [req.params.id] });
+  const row = result.rows[0];
+  if (!row?.proof_images) return res.status(404).json({ error: 'No proof uploaded' });
+  const images = JSON.parse(row.proof_images);
+  const img = images[parseInt(req.params.index, 10)];
+  if (!img) return res.status(404).json({ error: 'Image not found' });
+  const [meta, data] = img.split(',');
+  const mimeType = meta.match(/:(.*?);/)?.[1] || 'image/jpeg';
+  res.set('Content-Type', mimeType);
+  res.send(Buffer.from(data, 'base64'));
+});
+
 router.delete('/:id', async (req, res) => {
   const result = await db.execute({ sql: 'DELETE FROM orders WHERE id = ?', args: [req.params.id] });
   if (result.rowsAffected === 0) return res.status(404).json({ error: 'Order not found' });
