@@ -47,7 +47,7 @@ async function extractOrderFromImage(files) {
   if (!key) throw new Error('GEMINI_API_KEY not set in environment');
 
   const genAI = new GoogleGenerativeAI(key);
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
   const fileList = Array.isArray(files) ? files : [files];
   const imageParts = fileList.slice(0, 5).map(({ buffer, mimeType }) => ({
