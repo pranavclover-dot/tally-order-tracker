@@ -1,27 +1,12 @@
 require('dotenv').config();
-const nodemailer = require('nodemailer');
+const axios = require('axios');
 
-let transporter = null;
+function getApiKey() {
+  return process.env.BREVO_API_KEY || process.env.BREVO_PASS || null;
+}
 
-function getTransporter() {
-  if (transporter) return transporter;
-
-  const user = process.env.BREVO_USER;
-  const pass = process.env.BREVO_PASS;
-
-  if (!user || !pass) {
-    console.warn('[Mailer] Brevo credentials not configured — email notifications disabled');
-    return null;
-  }
-
-  transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com',
-    port: 587,
-    secure: false,
-    auth: { user, pass },
-  });
-
-  return transporter;
+function getSender() {
+  return process.env.BREVO_USER || null;
 }
 
 function getUrgencyColor(daysLeft) {
@@ -147,35 +132,35 @@ function buildEmailHTML(salesmanName, order, daysLeft) {
 </html>`;
 }
 
-async function sendReminderEmail(to, salesmanName, order, daysLeft) {
-  const t = getTransporter();
-  if (!t) return;
+async function sendEmail(to, subject, htmlContent) {
+  const apiKey = getApiKey();
+  const sender = getSender();
+  if (!apiKey || !sender) {
+    console.warn('[Mailer] Brevo credentials not configured — email skipped');
+    return;
+  }
+  await axios.post('https://api.brevo.com/v3/smtp/email', {
+    sender: { name: 'Order Tracker', email: sender },
+    to: [{ email: to }],
+    subject,
+    htmlContent,
+  }, {
+    headers: { 'api-key': apiKey, 'Content-Type': 'application/json' },
+    timeout: 15000,
+  });
+}
 
+async function sendReminderEmail(to, salesmanName, order, daysLeft) {
   const label = getUrgencyLabel(daysLeft);
   const subject = `[Order Tracker] ${label} — ${order.order_number} | ${order.customer_name}`;
-
-  await t.sendMail({
-    from: `"Order Tracker" <${process.env.BREVO_USER}>`,
-    to,
-    subject,
-    html: buildEmailHTML(salesmanName, order, daysLeft),
-  });
+  await sendEmail(to, subject, buildEmailHTML(salesmanName, order, daysLeft));
 }
 
 async function sendManagerOverdueEmail(order, daysOverdue) {
   const managerEmail = process.env.MANAGER_EMAIL;
-  const t = getTransporter();
-  if (!t || !managerEmail) return;
-
+  if (!managerEmail) return;
   const subject = `[OVERDUE] Order ${order.order_number} — ${order.customer_name} (${daysOverdue}d overdue)`;
-  const html = buildEmailHTML('Manager', order, -daysOverdue);
-
-  await t.sendMail({
-    from: `"Order Tracker" <${process.env.BREVO_USER}>`,
-    to: managerEmail,
-    subject,
-    html,
-  });
+  await sendEmail(managerEmail, subject, buildEmailHTML('Manager', order, -daysOverdue));
 }
 
 module.exports = { sendReminderEmail, sendManagerOverdueEmail };
