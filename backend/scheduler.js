@@ -141,6 +141,7 @@ async function checkSalesManagerReminders() {
         sendReminderEmail(mgr.email, mgr.name, order, 1)
           .then(() => console.log(`[Scheduler] Sales mgr 1-day email: ${order.order_number} → ${mgr.email}`))
           .catch(err => console.error(`[Scheduler] Sales mgr email failed ${order.order_number}:`, err.message));
+        sendNtfy(salesmanNtfyTopic(mgr.name), 'Order Due Tomorrow', `1 day left: Order ${order.order_number} for ${order.customer_name} — Salesman: ${order.salesman_name}`);
       }
     }
   }
