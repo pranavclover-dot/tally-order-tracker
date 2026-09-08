@@ -1,11 +1,12 @@
 import { useState, useRef } from 'react';
-import { X, Upload, Loader2, CheckCircle2, Trash2 } from 'lucide-react';
+import { X, Upload, Camera, Loader2, CheckCircle2, Trash2 } from 'lucide-react';
 import api from '../api/client';
 
 export default function CompleteOrderModal({ order, onDone, onClose }) {
   const [files, setFiles] = useState([]); // [{file, preview}]
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef();
+  const cameraRef = useRef();
 
   const addFiles = (newFiles) => {
     const valid = Array.from(newFiles).filter(f => f.type.startsWith('image/'));
@@ -60,8 +61,16 @@ export default function CompleteOrderModal({ order, onDone, onClose }) {
               ))}
               {files.length < 5 && (
                 <button onClick={() => fileRef.current?.click()}
-                  className="aspect-square rounded-lg border-2 border-dashed border-gray-200 hover:border-green-300 hover:bg-green-50/40 flex items-center justify-center transition-colors">
-                  <Upload className="w-5 h-5 text-gray-400" />
+                  className="aspect-square rounded-lg border-2 border-dashed border-gray-200 hover:border-green-300 hover:bg-green-50/40 flex flex-col items-center justify-center gap-1 transition-colors p-1">
+                  <Upload className="w-4 h-4 text-gray-400" />
+                  <span className="text-xs text-gray-400">Gallery</span>
+                </button>
+              )}
+              {files.length < 5 && (
+                <button onClick={() => cameraRef.current?.click()}
+                  className="aspect-square rounded-lg border-2 border-dashed border-gray-200 hover:border-green-300 hover:bg-green-50/40 flex flex-col items-center justify-center gap-1 transition-colors p-1">
+                  <Camera className="w-4 h-4 text-gray-400" />
+                  <span className="text-xs text-gray-400">Camera</span>
                 </button>
               )}
             </div>
@@ -70,17 +79,27 @@ export default function CompleteOrderModal({ order, onDone, onClose }) {
           {/* Drop zone — shown when no files yet */}
           {files.length === 0 && (
             <div
-              className="border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors border-gray-200 hover:border-green-300 hover:bg-green-50/40"
-              onClick={() => fileRef.current?.click()}
+              className="border-2 border-dashed rounded-xl p-5 text-center transition-colors border-gray-200"
               onDrop={e => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
               onDragOver={e => e.preventDefault()}
             >
-              <Upload className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">Click or drag photos here</p>
-              <p className="text-xs text-gray-400 mt-1">Transport challan, LR copy, packed box — up to 5 photos</p>
+              <p className="text-sm text-gray-500 mb-3">Transport challan, LR copy, packed box</p>
+              <div className="flex gap-3 justify-center">
+                <button type="button" onClick={() => cameraRef.current?.click()}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors">
+                  <Camera className="w-4 h-4" /> Take Photo
+                </button>
+                <button type="button" onClick={() => fileRef.current?.click()}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors">
+                  <Upload className="w-4 h-4" /> From Gallery
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-3">Up to 5 photos</p>
             </div>
           )}
 
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
+            onChange={e => addFiles(e.target.files)} />
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
             onChange={e => addFiles(e.target.files)} />
 

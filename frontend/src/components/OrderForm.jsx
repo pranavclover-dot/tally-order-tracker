@@ -92,6 +92,7 @@ export default function OrderForm({ order, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef();
+  const cameraRef = useRef();
 
   const addImages = (newFiles) => {
     const valid = Array.from(newFiles).filter(f => f.type.startsWith('image/'));
@@ -255,17 +256,37 @@ export default function OrderForm({ order, onClose, onSaved }) {
               {/* Drop zone — shown when no images yet */}
               {images.length === 0 && (
                 <div
-                  className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors border-gray-200 hover:border-blue-300 hover:bg-blue-50/50"
-                  onClick={() => fileRef.current?.click()}
+                  className="border-2 border-dashed rounded-xl p-6 text-center transition-colors border-gray-200"
                   onDrop={handleDrop}
                   onDragOver={(e) => e.preventDefault()}
                 >
-                  <Upload className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                  <p className="text-sm font-medium text-gray-600">Click or drag & drop photos</p>
-                  <p className="text-xs text-gray-400 mt-1">Upload up to 3 pages — JPG, PNG, HEIC</p>
+                  <p className="text-sm font-medium text-gray-600 mb-3">Add order photo(s)</p>
+                  <div className="flex gap-3 justify-center">
+                    <button type="button"
+                      onClick={() => cameraRef.current?.click()}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                      <Camera className="w-4 h-4" /> Take Photo
+                    </button>
+                    <button type="button"
+                      onClick={() => fileRef.current?.click()}
+                      className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors">
+                      <Upload className="w-4 h-4" /> From Gallery
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-3">Up to 3 pages — JPG, PNG, HEIC</p>
                 </div>
               )}
 
+              {/* Camera input — single capture, rear camera */}
+              <input
+                ref={cameraRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => addImages(e.target.files)}
+              />
+              {/* Gallery input — multi-select */}
               <input
                 ref={fileRef}
                 type="file"

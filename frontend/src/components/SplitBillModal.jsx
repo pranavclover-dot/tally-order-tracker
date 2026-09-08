@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Plus, Trash2, Truck, Package, Loader2, Upload, CheckCircle2, RotateCcw, Eye } from 'lucide-react';
+import { X, Plus, Trash2, Truck, Package, Loader2, Upload, Camera, CheckCircle2, RotateCcw, Eye } from 'lucide-react';
 import api from '../api/client';
 
 const formatDate = (d) => {
@@ -15,6 +15,7 @@ function DispatchModal({ item, orderId, onDone, onClose }) {
   const [preview, setPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef();
+  const cameraRef = useRef();
 
   const handleFile = (f) => {
     if (!f || !f.type.startsWith('image/')) return;
@@ -57,10 +58,9 @@ function DispatchModal({ item, orderId, onDone, onClose }) {
 
           {/* Drop zone */}
           <div
-            className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors ${
-              preview ? 'border-green-300 bg-green-50' : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50/40'
+            className={`border-2 border-dashed rounded-xl p-5 text-center transition-colors ${
+              preview ? 'border-green-300 bg-green-50' : 'border-gray-200'
             }`}
-            onClick={() => fileRef.current?.click()}
             onDrop={e => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); }}
             onDragOver={e => e.preventDefault()}
           >
@@ -68,11 +68,20 @@ function DispatchModal({ item, orderId, onDone, onClose }) {
               <img src={preview} alt="Proof" className="max-h-40 mx-auto rounded-lg object-contain" />
             ) : (
               <>
-                <Upload className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Click or drag photo here</p>
-                <p className="text-xs text-gray-400 mt-1">Transport challan, LR copy, packed box photo</p>
+                <p className="text-sm text-gray-500 mb-3">Transport challan, LR copy, packed box photo</p>
+                <div className="flex gap-3 justify-center">
+                  <button type="button" onClick={() => cameraRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                    <Camera className="w-4 h-4" /> Take Photo
+                  </button>
+                  <button type="button" onClick={() => fileRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors">
+                    <Upload className="w-4 h-4" /> From Gallery
+                  </button>
+                </div>
               </>
             )}
+            <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => handleFile(e.target.files[0])} />
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={e => handleFile(e.target.files[0])} />
           </div>
 
