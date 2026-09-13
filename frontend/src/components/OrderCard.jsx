@@ -16,6 +16,7 @@ const STATUS_STYLES = {
 };
 
 const DELETE_PASSWORD = 'clover123';
+const DEADLINE_PASSWORD = 'pranav2026';
 
 export default function OrderCard({ order, onClose, onStatusChange }) {
   const [cancelling, setCancelling] = useState(false);
@@ -27,13 +28,23 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
 
   const [editingDeadline, setEditingDeadline] = useState(false);
   const [newDeadline, setNewDeadline] = useState(order?.delivery_deadline || '');
+  const [deadlinePassword, setDeadlinePassword] = useState('');
+  const [deadlinePasswordError, setDeadlinePasswordError] = useState(false);
+  const [confirmDeadline, setConfirmDeadline] = useState(false);
   const [savingDeadline, setSavingDeadline] = useState(false);
   const [deadlineValue, setDeadlineValue] = useState(order?.delivery_deadline || '');
 
   if (!order) return null;
 
-  const handleSaveDeadline = async () => {
+  const startDeadlineConfirm = () => {
     if (!newDeadline || newDeadline === deadlineValue) { setEditingDeadline(false); return; }
+    setDeadlinePassword('');
+    setDeadlinePasswordError(false);
+    setConfirmDeadline(true);
+  };
+
+  const handleSaveDeadline = async () => {
+    if (deadlinePassword !== DEADLINE_PASSWORD) { setDeadlinePasswordError(true); return; }
     setSavingDeadline(true);
     try {
       const res = await api.patch(`/orders/${order.id}/deadline`, { delivery_deadline: newDeadline });
@@ -44,7 +55,17 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
     } finally {
       setSavingDeadline(false);
       setEditingDeadline(false);
+      setConfirmDeadline(false);
+      setDeadlinePassword('');
+      setDeadlinePasswordError(false);
     }
+  };
+
+  const cancelDeadlineEdit = () => {
+    setEditingDeadline(false);
+    setConfirmDeadline(false);
+    setDeadlinePassword('');
+    setDeadlinePasswordError(false);
   };
 
   const handleCancel = async () => {
@@ -92,19 +113,19 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
           <DetailRow icon={<User className="w-4 h-4"/>}      label="Salesman"        value={order.salesman_name || '—'} />
           <DetailRow icon={null}                             label="Salesman Email"   value={order.salesman_email || '—'} />
           <DetailRow icon={<Calendar className="w-4 h-4"/>}  label="Order Date"      value={formatDate(order.order_date)} />
-          {/* Delivery Deadline — inline editable */}
-          <div className="flex items-center justify-between py-2 border-b border-gray-50">
+          {/* Delivery Deadline — inline editable with password */}
+          <div className={`py-2 border-b border-gray-50 ${confirmDeadline ? '' : 'flex items-center justify-between'}`}>
             <div className="flex items-center gap-1.5 text-sm text-gray-500">
               <span className="text-gray-400"><Calendar className="w-4 h-4"/></span>
               Delivery Deadline
               {isActive && !editingDeadline && (
-                <button onClick={() => { setNewDeadline(deadlineValue); setEditingDeadline(true); }}
+                <button onClick={() => { setNewDeadline(deadlineValue); setEditingDeadline(true); setConfirmDeadline(false); }}
                   className="ml-1 p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors">
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
-            {editingDeadline ? (
+            {editingDeadline && !confirmDeadline && (
               <div className="flex items-center gap-1">
                 <input
                   type="date"
@@ -113,19 +134,47 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
                   className="border border-blue-300 rounded px-2 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                   autoFocus
                 />
-                <button onClick={handleSaveDeadline} disabled={savingDeadline}
-                  className="p-1 rounded bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50">
+                <button onClick={startDeadlineConfirm}
+                  className="p-1 rounded bg-blue-600 hover:bg-blue-700 text-white">
                   <Check className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => setEditingDeadline(false)}
+                <button onClick={cancelDeadlineEdit}
                   className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-600">
                   <XIcon className="w-3.5 h-3.5" />
                 </button>
               </div>
-            ) : (
+            )}
+            {!editingDeadline && (
               <span className={`text-sm font-medium ${order.daysLeft <= 3 && isActive ? 'text-orange-600' : 'text-gray-800'}`}>
                 {formatDate(deadlineValue)}
               </span>
+            )}
+            {confirmDeadline && (
+              <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+                <p className="text-sm text-blue-700 font-medium text-center">
+                  Change deadline to {formatDate(newDeadline)}? Enter password to confirm.
+                </p>
+                <input
+                  type="password"
+                  placeholder="Enter password"
+                  value={deadlinePassword}
+                  onChange={e => { setDeadlinePassword(e.target.value); setDeadlinePasswordError(false); }}
+                  className={`w-full border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white ${deadlinePasswordError ? 'border-red-500' : 'border-gray-300'}`}
+                  autoFocus
+                  onKeyDown={e => e.key === 'Enter' && handleSaveDeadline()}
+                />
+                {deadlinePasswordError && <p className="text-xs text-red-600 text-center">Incorrect password</p>}
+                <div className="flex gap-2">
+                  <button onClick={cancelDeadlineEdit}
+                    className="flex-1 py-1.5 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+                    Cancel
+                  </button>
+                  <button onClick={handleSaveDeadline} disabled={savingDeadline || !deadlinePassword}
+                    className="flex-1 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-60 transition-colors">
+                    {savingDeadline ? 'Saving...' : 'Confirm'}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
           <DetailRow icon={<IndianRupee className="w-4 h-4"/>} label="Amount"        value={formatINR(order.amount)} />
