@@ -155,6 +155,16 @@ router.put('/:id', async (req, res) => {
   res.json({ ...updated, daysLeft: calcDaysLeft(updated.delivery_deadline) });
 });
 
+router.patch('/:id/deadline', async (req, res) => {
+  const { delivery_deadline } = req.body;
+  if (!delivery_deadline || !/^\d{4}-\d{2}-\d{2}$/.test(delivery_deadline))
+    return res.status(400).json({ error: 'Invalid date format, expected YYYY-MM-DD' });
+  await db.execute({ sql: 'UPDATE orders SET delivery_deadline = ? WHERE id = ?', args: [delivery_deadline, req.params.id] });
+  const updated = (await db.execute({ sql: 'SELECT * FROM orders WHERE id = ?', args: [req.params.id] })).rows[0];
+  if (!updated) return res.status(404).json({ error: 'Order not found' });
+  res.json({ ...updated, daysLeft: calcDaysLeft(updated.delivery_deadline) });
+});
+
 router.patch('/:id/status', async (req, res) => {
   const { status } = req.body;
   const valid = ['pending', 'shipped', 'completed', 'cancelled'];

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, User, Building2, Calendar, IndianRupee, Hash, Scissors, Eye } from 'lucide-react';
+import { X, User, Building2, Calendar, IndianRupee, Hash, Scissors, Eye, Pencil, Check, X as XIcon } from 'lucide-react';
 import DeadlineBadge from './DeadlineBadge';
 import SplitBillModal from './SplitBillModal';
 import CompleteOrderModal from './CompleteOrderModal';
@@ -24,7 +24,28 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
   const [passwordError, setPasswordError] = useState(false);
   const [showSplit, setShowSplit] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
+
+  const [editingDeadline, setEditingDeadline] = useState(false);
+  const [newDeadline, setNewDeadline] = useState(order?.delivery_deadline || '');
+  const [savingDeadline, setSavingDeadline] = useState(false);
+  const [deadlineValue, setDeadlineValue] = useState(order?.delivery_deadline || '');
+
   if (!order) return null;
+
+  const handleSaveDeadline = async () => {
+    if (!newDeadline || newDeadline === deadlineValue) { setEditingDeadline(false); return; }
+    setSavingDeadline(true);
+    try {
+      const res = await api.patch(`/orders/${order.id}/deadline`, { delivery_deadline: newDeadline });
+      setDeadlineValue(res.data.delivery_deadline);
+      onStatusChange(order.id, order.status, res.data);
+    } catch (err) {
+      console.error('Deadline update failed:', err);
+    } finally {
+      setSavingDeadline(false);
+      setEditingDeadline(false);
+    }
+  };
 
   const handleCancel = async () => {
     if (cancelPassword !== DELETE_PASSWORD) {
@@ -71,7 +92,42 @@ export default function OrderCard({ order, onClose, onStatusChange }) {
           <DetailRow icon={<User className="w-4 h-4"/>}      label="Salesman"        value={order.salesman_name || '—'} />
           <DetailRow icon={null}                             label="Salesman Email"   value={order.salesman_email || '—'} />
           <DetailRow icon={<Calendar className="w-4 h-4"/>}  label="Order Date"      value={formatDate(order.order_date)} />
-          <DetailRow icon={<Calendar className="w-4 h-4"/>}  label="Delivery Deadline" value={formatDate(order.delivery_deadline)} highlight={order.daysLeft <= 3 && isActive} />
+          {/* Delivery Deadline — inline editable */}
+          <div className="flex items-center justify-between py-2 border-b border-gray-50">
+            <div className="flex items-center gap-1.5 text-sm text-gray-500">
+              <span className="text-gray-400"><Calendar className="w-4 h-4"/></span>
+              Delivery Deadline
+              {isActive && !editingDeadline && (
+                <button onClick={() => { setNewDeadline(deadlineValue); setEditingDeadline(true); }}
+                  className="ml-1 p-0.5 rounded hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            {editingDeadline ? (
+              <div className="flex items-center gap-1">
+                <input
+                  type="date"
+                  value={newDeadline}
+                  onChange={e => setNewDeadline(e.target.value)}
+                  className="border border-blue-300 rounded px-2 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  autoFocus
+                />
+                <button onClick={handleSaveDeadline} disabled={savingDeadline}
+                  className="p-1 rounded bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50">
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => setEditingDeadline(false)}
+                  className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-600">
+                  <XIcon className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <span className={`text-sm font-medium ${order.daysLeft <= 3 && isActive ? 'text-orange-600' : 'text-gray-800'}`}>
+                {formatDate(deadlineValue)}
+              </span>
+            )}
+          </div>
           <DetailRow icon={<IndianRupee className="w-4 h-4"/>} label="Amount"        value={formatINR(order.amount)} />
           <div className="flex items-center justify-between py-2">
             <span className="text-sm text-gray-500">Status</span>
