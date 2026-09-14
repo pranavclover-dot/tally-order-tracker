@@ -75,9 +75,11 @@ export default function Dashboard() {
 
   const filtered = orders
     .filter((o) =>
-      o.customer_name.toLowerCase().includes(search.toLowerCase()) ||
-      o.salesman_name.toLowerCase().includes(search.toLowerCase()) ||
-      o.order_number.toLowerCase().includes(search.toLowerCase())
+      o.status !== 'cancelled' && (
+        o.customer_name.toLowerCase().includes(search.toLowerCase()) ||
+        o.salesman_name.toLowerCase().includes(search.toLowerCase()) ||
+        o.order_number.toLowerCase().includes(search.toLowerCase())
+      )
     )
     .sort((a, b) => {
       if (a.status === 'completed' && b.status !== 'completed') return 1;
