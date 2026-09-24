@@ -1,4 +1,5 @@
 require('dotenv').config();
+const crypto = require('crypto');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const PROMPT = `You are reading a sales order document image from an Indian business (Tally ERP format).
@@ -36,6 +37,24 @@ LINE ITEMS: Extract all product rows. Empty array [] if no table exists.
 
 Return ONLY the JSON object. No other text.`;
 
+// Simple in-memory cache — keyed by hash of image buffers, max 50 entries
+const cache = new Map();
+const CACHE_MAX = 50;
+
+function hashFiles(files) {
+  const h = crypto.createHash('sha256');
+  for (const f of files) h.update(f.buffer);
+  return h.digest('hex');
+}
+
+function cacheSet(key, value) {
+  if (cache.size >= CACHE_MAX) {
+    // evict oldest entry
+    cache.delete(cache.keys().next().value);
+  }
+  cache.set(key, value);
+}
+
 function addDays(dateStr, days) {
   const d = new Date(dateStr);
   d.setDate(d.getDate() + days);
@@ -46,18 +65,39 @@ async function extractOrderFromImage(files) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error('GEMINI_API_KEY not set in environment');
 
-  const genAI = new GoogleGenerativeAI(key);
-  const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash-lite' });
-
   const fileList = Array.isArray(files) ? files : [files];
-  const imageParts = fileList.slice(0, 5).map(({ buffer, mimeType }) => ({
+
+  // Check cache first
+  const cacheKey = hashFiles(fileList);
+  if (cache.has(cacheKey)) {
+    console.log('[Gemini] Cache hit — returning cached result');
+    return cache.get(cacheKey);
+  }
+
+  const genAI = new GoogleGenerativeAI(key);
+  // Pass timeout via requestOptions (second arg to getGenerativeModel)
+  const model = genAI.getGenerativeModel(
+    { model: 'gemini-3.5-flash-lite' },
+    { timeout: 30000 }
+  );
+
+  const imageParts = fileList.slice(0, 3).map(({ buffer, mimeType }) => ({
     inlineData: {
       data: buffer.toString('base64'),
       mimeType: mimeType || 'image/jpeg',
     },
   }));
 
-  const result = await model.generateContent([PROMPT, ...imageParts]);
+  // Race the API call against a 30-second timeout
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Gemini request timed out after 30s')), 30000)
+  );
+
+  const result = await Promise.race([
+    model.generateContent([PROMPT, ...imageParts]),
+    timeoutPromise,
+  ]);
+
   const raw = result.response.text().trim();
   console.log('[Gemini] raw response (first 300):', raw.slice(0, 300));
 
@@ -73,6 +113,7 @@ async function extractOrderFromImage(files) {
     data.delivery_deadline = addDays(new Date().toISOString().split('T')[0], 12);
   }
 
+  cacheSet(cacheKey, data);
   return data;
 }
 
