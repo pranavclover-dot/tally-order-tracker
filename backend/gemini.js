@@ -77,7 +77,7 @@ async function extractOrderFromImage(files) {
   const genAI = new GoogleGenerativeAI(key);
   // Pass timeout via requestOptions (second arg to getGenerativeModel)
   const model = genAI.getGenerativeModel(
-    { model: 'gemini-3.0-flash' },
+    { model: 'gemini-3.5-flash-lite' },
     { timeout: 30000 }
   );
 
