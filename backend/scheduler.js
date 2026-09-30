@@ -91,30 +91,50 @@ async function checkManagerOverdue() {
   const ordersResult = await db.execute("SELECT * FROM orders WHERE status = 'pending'");
   for (const order of ordersResult.rows) {
     const daysLeft = getDaysLeft(order.delivery_deadline);
-    if (daysLeft >= 0) continue; // not overdue
 
-    const daysOverdue = Math.abs(daysLeft);
-    const exists = (await db.execute({
-      sql: "SELECT id FROM notifications WHERE order_id=? AND type='manager-overdue'",
-      args: [order.id],
-    })).rows[0];
+    // Due today
+    if (daysLeft === 0) {
+      const exists = (await db.execute({
+        sql: "SELECT id FROM notifications WHERE order_id=? AND type='manager-due-today'",
+        args: [order.id],
+      })).rows[0];
+      if (!exists) {
+        const message = `DUE TODAY: Order ${order.order_number} for ${order.customer_name} — Salesman: ${order.salesman_name}`;
+        await db.execute({
+          sql: `INSERT INTO notifications (order_id,salesman_name,salesman_email,message,type,days_before_deadline,sent_at,is_read) VALUES (?,?,?,?,'manager-due-today',0,?,0)`,
+          args: [order.id, 'Manager', process.env.MANAGER_EMAIL || '', message, new Date().toISOString()],
+        });
+        sendManagerOverdueEmail(order, 0)
+          .then(() => console.log(`[Scheduler] Manager due-today email: ${order.order_number}`))
+          .catch(err => console.error(`[Scheduler] Manager due-today email failed ${order.order_number}:`, err.message));
+        if (process.env.NTFY_TOPIC) sendNtfy(process.env.NTFY_TOPIC, '📦 Order Due TODAY', message);
+      }
+    }
 
-    if (!exists) {
-      const message = `OVERDUE: Order ${order.order_number} for ${order.customer_name} is ${daysOverdue} day(s) overdue`;
-      await db.execute({
-        sql: `INSERT INTO notifications (order_id,salesman_name,salesman_email,message,type,days_before_deadline,sent_at,is_read) VALUES (?,?,?,?,'manager-overdue',0,?,0)`,
-        args: [order.id, 'Manager', process.env.MANAGER_EMAIL || '', message, new Date().toISOString()],
-      });
-      sendManagerOverdueEmail(order, daysOverdue)
-        .then(() => console.log(`[Scheduler] Manager overdue email: ${order.order_number}`))
-        .catch(err => console.error(`[Scheduler] Manager email failed ${order.order_number}:`, err.message));
-      if (process.env.NTFY_TOPIC) sendNtfy(process.env.NTFY_TOPIC, '⚠ OVERDUE Order', `Order ${order.order_number} for ${order.customer_name} is ${daysOverdue} day(s) overdue — Salesman: ${order.salesman_name}`);
+    // Overdue
+    if (daysLeft < 0) {
+      const daysOverdue = Math.abs(daysLeft);
+      const exists = (await db.execute({
+        sql: "SELECT id FROM notifications WHERE order_id=? AND type='manager-overdue'",
+        args: [order.id],
+      })).rows[0];
+      if (!exists) {
+        const message = `OVERDUE: Order ${order.order_number} for ${order.customer_name} is ${daysOverdue} day(s) overdue`;
+        await db.execute({
+          sql: `INSERT INTO notifications (order_id,salesman_name,salesman_email,message,type,days_before_deadline,sent_at,is_read) VALUES (?,?,?,?,'manager-overdue',0,?,0)`,
+          args: [order.id, 'Manager', process.env.MANAGER_EMAIL || '', message, new Date().toISOString()],
+        });
+        sendManagerOverdueEmail(order, daysOverdue)
+          .then(() => console.log(`[Scheduler] Manager overdue email: ${order.order_number}`))
+          .catch(err => console.error(`[Scheduler] Manager email failed ${order.order_number}:`, err.message));
+        if (process.env.NTFY_TOPIC) sendNtfy(process.env.NTFY_TOPIC, '⚠ OVERDUE Order', `Order ${order.order_number} for ${order.customer_name} is ${daysOverdue} day(s) overdue — Salesman: ${order.salesman_name}`);
+      }
     }
   }
 }
 
 async function checkSalesManagerReminders() {
-  // Anoop and Shani get emailed for ALL orders exactly 1 day before deadline
+  // Anoop and Shani get notified 1 day before AND on the day of deadline
   const managersResult = await db.execute(
     "SELECT name, email FROM salesmen WHERE (name LIKE '%Anoop%' OR name LIKE '%Shani%') AND email IS NOT NULL AND email != ''"
   );
@@ -124,24 +144,28 @@ async function checkSalesManagerReminders() {
   const ordersResult = await db.execute("SELECT * FROM orders WHERE status = 'pending'");
   for (const order of ordersResult.rows) {
     const daysLeft = getDaysLeft(order.delivery_deadline);
-    if (daysLeft !== 1) continue;
+    if (daysLeft !== 1 && daysLeft !== 0) continue;
+
+    const type = daysLeft === 0 ? 'sales-mgr-today' : 'sales-mgr-1day';
+    const daysLabel = daysLeft === 0 ? 'due TODAY' : 'due tomorrow';
+    const ntfyTitle = daysLeft === 0 ? 'Order Due TODAY' : 'Order Due Tomorrow';
 
     for (const mgr of managers) {
       const exists = (await db.execute({
-        sql: "SELECT id FROM notifications WHERE order_id=? AND type='sales-mgr-1day' AND salesman_email=?",
-        args: [order.id, mgr.email],
+        sql: 'SELECT id FROM notifications WHERE order_id=? AND type=? AND salesman_email=?',
+        args: [order.id, type, mgr.email],
       })).rows[0];
 
       if (!exists) {
-        const message = `1 day left: Order ${order.order_number} for ${order.customer_name} is due tomorrow`;
+        const message = `Order ${order.order_number} for ${order.customer_name} is ${daysLabel} — Salesman: ${order.salesman_name}`;
         await db.execute({
-          sql: `INSERT INTO notifications (order_id,salesman_name,salesman_email,message,type,days_before_deadline,sent_at,is_read) VALUES (?,?,?,?,'sales-mgr-1day',1,?,0)`,
-          args: [order.id, mgr.name, mgr.email, message, new Date().toISOString()],
+          sql: `INSERT INTO notifications (order_id,salesman_name,salesman_email,message,type,days_before_deadline,sent_at,is_read) VALUES (?,?,?,?,?,?,?,0)`,
+          args: [order.id, mgr.name, mgr.email, message, type, daysLeft, new Date().toISOString()],
         });
-        sendReminderEmail(mgr.email, mgr.name, order, 1)
-          .then(() => console.log(`[Scheduler] Sales mgr 1-day email: ${order.order_number} → ${mgr.email}`))
+        sendReminderEmail(mgr.email, mgr.name, order, daysLeft)
+          .then(() => console.log(`[Scheduler] Sales mgr ${type} email: ${order.order_number} → ${mgr.email}`))
           .catch(err => console.error(`[Scheduler] Sales mgr email failed ${order.order_number}:`, err.message));
-        sendNtfy(salesmanNtfyTopic(mgr.name), 'Order Due Tomorrow', `1 day left: Order ${order.order_number} for ${order.customer_name} — Salesman: ${order.salesman_name}`);
+        sendNtfy(salesmanNtfyTopic(mgr.name), ntfyTitle, message);
       }
     }
   }
