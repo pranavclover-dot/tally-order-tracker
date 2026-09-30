@@ -171,14 +171,14 @@ async function checkFollowUpReminders() {
 }
 
 function startScheduler() {
-  cron.schedule('0 * * * *', async () => {
-    console.log('[Scheduler] Hourly run');
+  cron.schedule('30 11 * * *', async () => {
+    console.log('[Scheduler] Daily 11:30 AM run');
     await syncOrdersFromTally();
     await checkDeadlines();
     await checkManagerOverdue();
     await checkSalesManagerReminders();
     await checkFollowUpReminders();
-  });
+  }, { timezone: 'Asia/Kolkata' });
 
   setTimeout(async () => {
     console.log('[Scheduler] Initial check...');
