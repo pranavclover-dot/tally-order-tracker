@@ -4,7 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const { initDB, db } = require('./db');
 const { syncOrdersFromTally } = require('./tally');
-const { startScheduler } = require('./scheduler');
+const { startScheduler, runNow } = require('./scheduler');
 
 const authRouter = require('./routes/auth');
 const ordersRouter = require('./routes/orders');
@@ -78,6 +78,16 @@ app.post('/api/push/unsubscribe', async (req, res) => {
   if (!subscription) return res.status(400).json({ error: 'No subscription' });
   await db.execute({ sql: 'DELETE FROM push_subscriptions WHERE subscription = ?', args: [JSON.stringify(subscription)] });
   res.json({ success: true });
+});
+
+// Manual trigger — runs all notification checks immediately
+app.post('/api/admin/run-notifications', async (req, res) => {
+  try {
+    await runNow();
+    res.json({ success: true, message: 'Notifications triggered' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Send a test reminder email

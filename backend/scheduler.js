@@ -213,4 +213,11 @@ function startScheduler() {
   }, 2000);
 }
 
-module.exports = { startScheduler };
+async function runNow() {
+  console.log('[Scheduler] Manual trigger — running all checks now');
+  await checkDeadlines();
+  await checkManagerOverdue();
+  await checkSalesManagerReminders();
+}
+
+module.exports = { startScheduler, runNow };
