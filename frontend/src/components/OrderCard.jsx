@@ -16,7 +16,7 @@ const STATUS_STYLES = {
 };
 
 const DELETE_PASSWORD = 'clover123';
-const DEADLINE_PASSWORD = 'pranav2026';
+const DEADLINE_PASSWORD = 'clover123';
 
 export default function OrderCard({ order, onClose, onStatusChange }) {
   const [cancelling, setCancelling] = useState(false);
