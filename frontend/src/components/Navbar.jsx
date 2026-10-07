@@ -128,7 +128,13 @@ export default function Navbar() {
                 <button
                   onClick={handlePushToggle}
                   title={pushStatus === 'subscribed' ? 'Push ON — tap to disable' : pushStatus === 'denied' ? 'Notifications blocked' : 'Enable push notifications'}
-                  className={`p-2 rounded-full transition-colors ${pushStatus === 'subscribed' ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' : pushStatus === 'denied' ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
+                  className={`p-2 rounded-full transition-all ${
+                    pushStatus === 'subscribed'
+                      ? 'text-white bg-green-500 hover:bg-green-600 shadow-sm'
+                      : pushStatus === 'denied'
+                      ? 'text-gray-300 bg-gray-100 cursor-not-allowed'
+                      : 'text-gray-400 bg-gray-100 hover:bg-red-50 hover:text-red-400'
+                  }`}
                 >
                   {pushStatus === 'subscribed' ? <BellRing className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
                 </button>
