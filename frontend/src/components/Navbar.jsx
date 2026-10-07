@@ -106,19 +106,13 @@ export default function Navbar() {
                 <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-full">
                   <span className="text-xs font-semibold text-blue-700">{salesmanName}</span>
                   <button
-                    onClick={() => { localStorage.removeItem('salesmanName'); setSalesmanName(null); navigate('/salesman-login'); }}
+                    onClick={() => { localStorage.removeItem('salesmanName'); localStorage.removeItem('pushEnabled'); setSalesmanName(null); navigate('/salesman-login'); }}
                     title="Switch user"
                     className="text-blue-400 hover:text-blue-700 transition-colors"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              )}
-              {!salesmanName && (
-                <Link to="/salesman-login"
-                  className="hidden sm:block px-3 py-1.5 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors font-medium">
-                  Login
-                </Link>
               )}
               <button onClick={() => setShowConfig(true)}
                 className="hidden sm:block px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">
@@ -173,27 +167,19 @@ export default function Navbar() {
               >
                 ⚙ Settings
               </button>
-              {salesmanName ? (
+              {salesmanName && (
                 <div className="px-4 py-3 border-t border-gray-100 mt-1">
                   <p className="text-xs text-gray-400 mb-1">Logged in as</p>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-blue-700">{salesmanName}</span>
                     <button
-                      onClick={() => { localStorage.removeItem('salesmanName'); setSalesmanName(null); setMenuOpen(false); navigate('/salesman-login'); }}
+                      onClick={() => { localStorage.removeItem('salesmanName'); localStorage.removeItem('pushEnabled'); setSalesmanName(null); setMenuOpen(false); navigate('/salesman-login'); }}
                       className="text-xs text-red-500 hover:text-red-700 font-medium transition-colors"
                     >
                       Switch User
                     </button>
                   </div>
                 </div>
-              ) : (
-                <Link
-                  to="/salesman-login"
-                  onClick={() => setMenuOpen(false)}
-                  className="block px-4 py-3 rounded-lg text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
-                >
-                  Login as Salesman
-                </Link>
               )}
             </div>
           </div>
