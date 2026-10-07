@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Package, BellRing, BellOff } from 'lucide-react';
+import { Package, BellRing, BellOff, Menu, X } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import ReminderConfig from './ReminderConfig';
 import api from '../api/client';
@@ -22,7 +22,8 @@ const NAV_LINKS = [
 export default function Navbar() {
   const location = useLocation();
   const [showConfig, setShowConfig] = useState(false);
-  const [pushStatus, setPushStatus] = useState('unknown'); // 'unknown'|'subscribed'|'denied'|'unsupported'
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [pushStatus, setPushStatus] = useState('unknown');
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -34,6 +35,9 @@ export default function Navbar() {
       reg.pushManager.getSubscription().then(sub => setPushStatus(sub ? 'subscribed' : 'unsubscribed'))
     ).catch(() => setPushStatus('unsubscribed'));
   }, []);
+
+  // Close menu on route change
+  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
 
   const handlePushToggle = async () => {
     if (pushStatus === 'unsupported' || pushStatus === 'denied') return;
@@ -73,24 +77,28 @@ export default function Navbar() {
       <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-6">
-              <Link to="/" className="flex items-center gap-2 font-bold text-blue-700 text-lg">
-                <Package className="w-5 h-5" />
-                Order Tracker
-              </Link>
-              <div className="hidden sm:flex gap-1">
-                {NAV_LINKS.map(({ path, label }) => {
-                  const active = location.pathname === path;
-                  return (
-                    <Link key={path} to={path}
-                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                        active ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      }`}
-                    >{label}</Link>
-                  );
-                })}
-              </div>
+
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-2 font-bold text-blue-700 text-lg">
+              <Package className="w-5 h-5" />
+              Order Tracker
+            </Link>
+
+            {/* Desktop nav links */}
+            <div className="hidden sm:flex gap-1">
+              {NAV_LINKS.map(({ path, label }) => {
+                const active = location.pathname === path;
+                return (
+                  <Link key={path} to={path}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      active ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                  >{label}</Link>
+                );
+              })}
             </div>
+
+            {/* Right side */}
             <div className="flex items-center gap-2">
               <button onClick={() => setShowConfig(true)}
                 className="hidden sm:block px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">
@@ -99,17 +107,51 @@ export default function Navbar() {
               {pushStatus !== 'unsupported' && (
                 <button
                   onClick={handlePushToggle}
-                  title={pushStatus === 'subscribed' ? 'Push notifications ON — click to disable' : pushStatus === 'denied' ? 'Notifications blocked in browser settings' : 'Enable push notifications'}
+                  title={pushStatus === 'subscribed' ? 'Push ON — tap to disable' : pushStatus === 'denied' ? 'Notifications blocked' : 'Enable push notifications'}
                   className={`p-2 rounded-full transition-colors ${pushStatus === 'subscribed' ? 'text-blue-600 bg-blue-50 hover:bg-blue-100' : pushStatus === 'denied' ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'}`}
                 >
                   {pushStatus === 'subscribed' ? <BellRing className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
                 </button>
               )}
               <NotificationBell />
+
+              {/* Hamburger — mobile only */}
+              <button
+                onClick={() => setMenuOpen(o => !o)}
+                className="sm:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+                aria-label="Menu"
+              >
+                {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Mobile dropdown menu */}
+        {menuOpen && (
+          <div className="sm:hidden border-t border-gray-100 bg-white shadow-lg">
+            <div className="px-4 py-2 space-y-1">
+              {NAV_LINKS.map(({ path, label }) => {
+                const active = location.pathname === path;
+                return (
+                  <Link key={path} to={path}
+                    className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                      active ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >{label}</Link>
+                );
+              })}
+              <button
+                onClick={() => { setShowConfig(true); setMenuOpen(false); }}
+                className="w-full text-left px-4 py-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                ⚙ Settings
+              </button>
+            </div>
+          </div>
+        )}
       </nav>
+
       {showConfig && <ReminderConfig onClose={() => setShowConfig(false)} />}
     </>
   );
