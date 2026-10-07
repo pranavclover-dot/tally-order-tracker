@@ -67,8 +67,11 @@ async function initDB() {
   await db.execute(`CREATE TABLE IF NOT EXISTS push_subscriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     subscription TEXT UNIQUE NOT NULL,
+    salesman_name TEXT,
     created_at TEXT
   )`);
+  // Migration: add salesman_name if missing
+  try { await db.execute('ALTER TABLE push_subscriptions ADD COLUMN salesman_name TEXT'); } catch (_) {}
 
   // Backfill salesman emails on every startup — fills any order missing an email
   try {

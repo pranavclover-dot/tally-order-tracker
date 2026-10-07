@@ -207,11 +207,28 @@ async function sendPushToAll(title, body) {
       await webpush.sendNotification(JSON.parse(row.subscription), JSON.stringify({ title, body }));
     } catch (err) {
       if (err.statusCode === 410 || err.statusCode === 404) {
-        // Expired subscription — clean up
         await db.execute({ sql: 'DELETE FROM push_subscriptions WHERE id = ?', args: [row.id] });
       }
     }
   }
 }
 
-module.exports = { sendReminderEmail, sendManagerOverdueEmail, sendNtfy, salesmanNtfyTopic, sendPushToAll };
+async function sendPushToSalesman(salesmanName, title, body) {
+  if (!process.env.VAPID_PUBLIC_KEY || !salesmanName) return;
+  const { db } = require('./db');
+  const rows = (await db.execute({
+    sql: 'SELECT id, subscription FROM push_subscriptions WHERE LOWER(salesman_name) = LOWER(?)',
+    args: [salesmanName],
+  })).rows;
+  for (const row of rows) {
+    try {
+      await webpush.sendNotification(JSON.parse(row.subscription), JSON.stringify({ title, body }));
+    } catch (err) {
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        await db.execute({ sql: 'DELETE FROM push_subscriptions WHERE id = ?', args: [row.id] });
+      }
+    }
+  }
+}
+
+module.exports = { sendReminderEmail, sendManagerOverdueEmail, sendNtfy, salesmanNtfyTopic, sendPushToAll, sendPushToSalesman };

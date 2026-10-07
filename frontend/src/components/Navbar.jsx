@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Package, BellRing, BellOff, Menu, X } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Package, BellRing, BellOff, Menu, X, LogOut } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import ReminderConfig from './ReminderConfig';
 import api from '../api/client';
@@ -21,9 +21,11 @@ const NAV_LINKS = [
 
 export default function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [showConfig, setShowConfig] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [pushStatus, setPushStatus] = useState('unknown');
+  const [salesmanName, setSalesmanName] = useState(() => localStorage.getItem('salesmanName') || null);
 
   useEffect(() => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -65,7 +67,7 @@ export default function Navbar() {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(data.publicKey),
       });
-      await api.post('/push/subscribe', { subscription: sub.toJSON() });
+      await api.post('/push/subscribe', { subscription: sub.toJSON(), salesmanName: salesmanName || undefined });
       setPushStatus('subscribed');
     } catch (err) {
       console.error('[Push]', err);
@@ -100,6 +102,24 @@ export default function Navbar() {
 
             {/* Right side */}
             <div className="flex items-center gap-2">
+              {salesmanName && (
+                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-full">
+                  <span className="text-xs font-semibold text-blue-700">{salesmanName}</span>
+                  <button
+                    onClick={() => { localStorage.removeItem('salesmanName'); setSalesmanName(null); navigate('/salesman-login'); }}
+                    title="Switch user"
+                    className="text-blue-400 hover:text-blue-700 transition-colors"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+              {!salesmanName && (
+                <Link to="/salesman-login"
+                  className="hidden sm:block px-3 py-1.5 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors font-medium">
+                  Login
+                </Link>
+              )}
               <button onClick={() => setShowConfig(true)}
                 className="hidden sm:block px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors">
                 ⚙ Settings
@@ -147,6 +167,28 @@ export default function Navbar() {
               >
                 ⚙ Settings
               </button>
+              {salesmanName ? (
+                <div className="px-4 py-3 border-t border-gray-100 mt-1">
+                  <p className="text-xs text-gray-400 mb-1">Logged in as</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-blue-700">{salesmanName}</span>
+                    <button
+                      onClick={() => { localStorage.removeItem('salesmanName'); setSalesmanName(null); setMenuOpen(false); navigate('/salesman-login'); }}
+                      className="text-xs text-red-500 hover:text-red-700 font-medium transition-colors"
+                    >
+                      Switch User
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <Link
+                  to="/salesman-login"
+                  onClick={() => setMenuOpen(false)}
+                  className="block px-4 py-3 rounded-lg text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
+                >
+                  Login as Salesman
+                </Link>
+              )}
             </div>
           </div>
         )}

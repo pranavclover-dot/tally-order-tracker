@@ -59,13 +59,13 @@ app.get('/api/push/vapid-key', (req, res) => {
 });
 
 app.post('/api/push/subscribe', async (req, res) => {
-  const { subscription } = req.body;
+  const { subscription, salesmanName } = req.body;
   if (!subscription) return res.status(400).json({ error: 'No subscription provided' });
   const subJson = JSON.stringify(subscription);
   try {
     await db.execute({
-      sql: 'INSERT OR IGNORE INTO push_subscriptions (subscription, created_at) VALUES (?, ?)',
-      args: [subJson, new Date().toISOString()],
+      sql: 'INSERT OR REPLACE INTO push_subscriptions (subscription, salesman_name, created_at) VALUES (?, ?, ?)',
+      args: [subJson, salesmanName || null, new Date().toISOString()],
     });
     res.json({ success: true });
   } catch (err) {
