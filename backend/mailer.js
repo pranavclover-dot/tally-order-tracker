@@ -173,30 +173,6 @@ async function sendManagerOverdueEmail(order, daysOverdue) {
   await sendEmail(managerEmail, subject, buildEmailHTML('Manager', order, -daysOverdue));
 }
 
-function salesmanNtfyTopic(salesmanName) {
-  const slug = (salesmanName || '').toLowerCase().trim()
-    .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  return slug ? `clover-${slug}` : null;
-}
-
-async function sendNtfy(topic, title, message) {
-  if (!topic) return;
-  try {
-    await axios.post('https://ntfy.sh/', {
-      topic,
-      title: title || 'Order Tracker Alert',
-      message,
-      priority: 4,
-      tags: ['package'],
-    }, {
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 10000,
-    });
-    console.log(`[ntfy] Sent to topic: ${topic}`);
-  } catch (err) {
-    console.error('[ntfy] Failed:', err.message);
-  }
-}
 
 async function sendPushToAll(title, body) {
   if (!process.env.VAPID_PUBLIC_KEY) return;
@@ -231,4 +207,4 @@ async function sendPushToSalesman(salesmanName, title, body) {
   }
 }
 
-module.exports = { sendReminderEmail, sendManagerOverdueEmail, sendNtfy, salesmanNtfyTopic, sendPushToAll, sendPushToSalesman };
+module.exports = { sendReminderEmail, sendManagerOverdueEmail, sendPushToAll, sendPushToSalesman };

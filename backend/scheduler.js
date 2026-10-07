@@ -1,7 +1,7 @@
 const cron = require('node-cron');
 const { db } = require('./db');
 const { syncOrdersFromTally } = require('./tally');
-const { sendReminderEmail, sendManagerOverdueEmail, sendNtfy, salesmanNtfyTopic, sendPushToAll, sendPushToSalesman } = require('./mailer');
+const { sendReminderEmail, sendManagerOverdueEmail, sendPushToAll, sendPushToSalesman } = require('./mailer');
 
 function getDaysLeft(deadlineStr) {
   const today = new Date(); today.setHours(0,0,0,0);
@@ -68,14 +68,7 @@ async function checkDeadlines() {
               })
               .catch(err => console.error(`[Scheduler] Email failed ${order.order_number}:`, err.message));
 
-            // ntfy to salesman's personal topic (e.g. clover-ankita)
-            const ntfyTopic = salesmanNtfyTopic(order.salesman_name);
-            if (ntfyTopic) sendNtfy(ntfyTopic, 'Order Tracker Alert', message);
-
-            // Ashish gets notified when order is overdue by more than 3 days
-            if (daysLeft < -3) sendNtfy('clover-ashish', '⚠ Order Overdue 3+ Days', message);
-
-            // Web push — salesman-targeted, falls back to all
+            // Web push — salesman-targeted
             sendPushToSalesman(
               order.salesman_name,
               `Order Tracker — ${daysLeft <= 0 ? 'OVERDUE' : `${daysLeft}d left`}`,
@@ -108,7 +101,6 @@ async function checkManagerOverdue() {
         sendManagerOverdueEmail(order, 0)
           .then(() => console.log(`[Scheduler] Manager due-today email: ${order.order_number}`))
           .catch(err => console.error(`[Scheduler] Manager due-today email failed ${order.order_number}:`, err.message));
-        if (process.env.NTFY_TOPIC) sendNtfy(process.env.NTFY_TOPIC, '📦 Order Due TODAY', message);
         sendPushToSalesman(order.salesman_name, '📦 Order Due TODAY', `Order ${order.order_number} for ${order.customer_name} is due today`).catch(() => {});
       }
     }
@@ -129,7 +121,6 @@ async function checkManagerOverdue() {
         sendManagerOverdueEmail(order, daysOverdue)
           .then(() => console.log(`[Scheduler] Manager overdue email: ${order.order_number}`))
           .catch(err => console.error(`[Scheduler] Manager email failed ${order.order_number}:`, err.message));
-        if (process.env.NTFY_TOPIC) sendNtfy(process.env.NTFY_TOPIC, '⚠ OVERDUE Order', `Order ${order.order_number} for ${order.customer_name} is ${daysOverdue} day(s) overdue — Salesman: ${order.salesman_name}`);
       }
     }
   }
@@ -150,7 +141,7 @@ async function checkSalesManagerReminders() {
 
     const type = daysLeft === 0 ? 'sales-mgr-today' : 'sales-mgr-1day';
     const daysLabel = daysLeft === 0 ? 'due TODAY' : 'due tomorrow';
-    const ntfyTitle = daysLeft === 0 ? 'Order Due TODAY' : 'Order Due Tomorrow';
+    const pushTitle = daysLeft === 0 ? 'Order Due TODAY' : 'Order Due Tomorrow';
 
     for (const mgr of managers) {
       const exists = (await db.execute({
@@ -167,8 +158,7 @@ async function checkSalesManagerReminders() {
         sendReminderEmail(mgr.email, mgr.name, order, daysLeft)
           .then(() => console.log(`[Scheduler] Sales mgr ${type} email: ${order.order_number} → ${mgr.email}`))
           .catch(err => console.error(`[Scheduler] Sales mgr email failed ${order.order_number}:`, err.message));
-        sendNtfy(salesmanNtfyTopic(mgr.name), ntfyTitle, message);
-        sendPushToSalesman(mgr.name, ntfyTitle, message).catch(() => {});
+        sendPushToSalesman(mgr.name, pushTitle, message).catch(() => {});
       }
     }
   }
