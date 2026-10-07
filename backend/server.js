@@ -80,6 +80,23 @@ app.post('/api/push/unsubscribe', async (req, res) => {
   res.json({ success: true });
 });
 
+// Send a test push to a specific salesman
+app.post('/api/admin/push-salesman', async (req, res) => {
+  const { salesmanName, title, body } = req.body;
+  if (!salesmanName) return res.status(400).json({ error: 'salesmanName required' });
+  try {
+    const { sendPushToSalesman } = require('./mailer');
+    await sendPushToSalesman(
+      salesmanName,
+      title || 'Test Notification',
+      body || `Hello ${salesmanName}! Push notifications are working.`
+    );
+    res.json({ success: true, message: `Push sent to ${salesmanName}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Manual trigger — runs all notification checks immediately
 app.post('/api/admin/run-notifications', async (req, res) => {
   try {
