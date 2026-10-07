@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const { name, email, phone } = req.body;
-  if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
+  if (!name) return res.status(400).json({ error: 'Name is required' });
   try {
     const ins = await db.execute({
       sql: 'INSERT INTO salesmen (name, email, phone) VALUES (?, ?, ?)',
@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   const { name, email, phone } = req.body;
-  if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
+  if (!name) return res.status(400).json({ error: 'Name is required' });
   await db.execute({ sql: 'UPDATE salesmen SET name = ?, email = ?, phone = ? WHERE id = ?', args: [name, email, phone || null, req.params.id] });
   const updated = (await db.execute({ sql: 'SELECT * FROM salesmen WHERE id = ?', args: [req.params.id] })).rows[0];
   if (!updated) return res.status(404).json({ error: 'Salesman not found' });

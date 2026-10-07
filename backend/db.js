@@ -73,6 +73,14 @@ async function initDB() {
   // Migration: add salesman_name if missing
   try { await db.execute('ALTER TABLE push_subscriptions ADD COLUMN salesman_name TEXT'); } catch (_) {}
 
+  // Seed default salesmen (name-only, no email required)
+  const defaultSalesmen = ['Akansha', 'Asha', 'Pranav'];
+  for (const name of defaultSalesmen) {
+    try {
+      await db.execute({ sql: 'INSERT OR IGNORE INTO salesmen (name) VALUES (?)', args: [name] });
+    } catch (_) {}
+  }
+
   // Backfill salesman emails on every startup — fills any order missing an email
   try {
     const salesmenRows = (await db.execute({ sql: "SELECT name, email FROM salesmen WHERE email IS NOT NULL AND email != ''", args: [] })).rows;
